@@ -154,6 +154,7 @@ class ANiStrmPro(_PluginBase):
             url = f'https://aniopen.an-i.workers.dev/{self.__get_ani_season()}/'
         else:
             url = f'{self._image_url}/{self.__get_ani_season()}/'
+            logger.info(f'{url}')
 
         rep = RequestUtils(ua=settings.USER_AGENT if settings.USER_AGENT else None,
                            proxies=settings.PROXY if settings.PROXY else None).post(url=url)
