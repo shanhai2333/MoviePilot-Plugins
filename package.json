@@ -11,7 +11,7 @@
     "name": "Strm文件模式转换(增强版)",
     "description": "Strm文件内容转为本地路径或者cd2/alist API路径。",
     "labels": "云盘",
-    "version": "1.0",
+    "version": "1.1",
     "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/convert.png",
     "author": "shanhai2333",
     "level": 1,
