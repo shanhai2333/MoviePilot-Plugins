@@ -12,8 +12,8 @@
     "description": "Strm文件内容转为本地路径或者cd2/alist API路径。",
     "labels": "云盘",
     "version": "1.0",
-    "icon": "https://raw.githubusercontent.com/thsrite/MoviePilot-Plugins/main/icons/convert.png",
-    "author": "thsrite",
+    "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/convert.png",
+    "author": "shanhai2333",
     "level": 1,
     "history": {
       "v1.0": "Strm文件内容转为本地路径或者cd2/alist API路径,(添加结构一致的url替换)"
