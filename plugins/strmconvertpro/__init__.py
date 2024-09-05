@@ -7,7 +7,7 @@ from typing import Any, List, Dict, Tuple
 from app.log import logger
 
 
-class StrmConvert(_PluginBase):
+class StrmConvertPro(_PluginBase):
     # 插件名称
     plugin_name = "Strm文件模式转换（增强版）"
     # 插件描述

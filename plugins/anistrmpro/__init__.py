@@ -50,7 +50,7 @@ def retry(ExceptionToCheck: Any,
     return deco_retry
 
 
-class ANiStrm(_PluginBase):
+class ANiStrmPro(_PluginBase):
     # 插件名称
     plugin_name = "ANiStrmPro"
     # 插件描述
@@ -458,6 +458,6 @@ class ANiStrm(_PluginBase):
 
 
 if __name__ == "__main__":
-    anistrm = ANiStrm()
-    name_list = anistrm.get_latest_list()
+    anistrmpro = ANiStrmPro()
+    name_list = anistrmpro.get_latest_list()
     print(name_list)
