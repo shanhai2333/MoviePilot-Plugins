@@ -16,7 +16,8 @@
     "author": "shanhai2333",
     "level": 1,
     "history": {
-      "v1.0": "Strm文件内容转为本地路径或者cd2/alist API路径,(添加结构一致的url替换)"
+      "v1.1": "Strm文件内容转为本地路径或者cd2/alist API路径,(添加结构一致的url替换)",
+      "v1.0": "Strm文件内容转为本地路径或者cd2/alist API路径"
     }
   }
 }
