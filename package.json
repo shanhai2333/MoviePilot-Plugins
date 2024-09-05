@@ -2,20 +2,26 @@
   "ANiStrmPro": {
     "name": "ANi Strm Pro",
     "description": "自动获取当季所有番剧，生成strm文件，mp刮削入库，emby直接播放，免去下载，轻松拥有一个番剧媒体库(可配置镜像)",
-    "version": "1.1",
+    "version": "1.2",
     "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png",
     "author": "shanhai2333",
-    "level": 2
+    "level": 2,
+    "history": {
+      "v1.2": "细节修改",
+      "v1.1": "增加镜像配置",
+      "v1.0": "自动获取当季所有番剧，生成strm文件，mp刮削入库，emby直接播放，免去下载，轻松拥有一个番剧媒体库"
+    }
   },
   "StrmConvertPro": {
     "name": "Strm文件模式转换(增强版)",
     "description": "Strm文件内容转为本地路径或者cd2/alist API路径。",
     "labels": "云盘",
-    "version": "1.1",
+    "version": "1.2",
     "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/convert.png",
     "author": "shanhai2333",
     "level": 1,
     "history": {
+      "v1.2": "细节修改",
       "v1.1": "Strm文件内容转为本地路径或者cd2/alist API路径,(添加结构一致的url替换)",
       "v1.0": "Strm文件内容转为本地路径或者cd2/alist API路径"
     }
