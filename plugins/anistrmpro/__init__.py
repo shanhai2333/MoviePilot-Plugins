@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "1.10"
+    plugin_version = "1.11"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -79,8 +79,8 @@ class ANiStrmPro(_PluginBase):
     _cron = None
     _onlyonce = False
     _fulladd = False
-    _before_month = 0
-    _before_year = 0
+    _before_month = ''
+    _before_year = ''
     _storageplace = None
 
     # 定时器
@@ -133,7 +133,7 @@ class ANiStrmPro(_PluginBase):
     def __get_ani_season(self, idx_month: int = None) -> str:
         current_year = 0
         current_month = 0
-        if self._before_month != 0 & self._before_year !=0:
+        if self._before_month != "" & self._before_year != "":
             logger.info(f"1获取指定{self._before_year}年{self._before_month}月所在季度番剧信息")
             current_year = self._before_year
             current_month = self._before_month
@@ -223,7 +223,6 @@ class ANiStrmPro(_PluginBase):
                     cnt += 1
         # 全量添加当季
         else:
-            logger.info(f' {self._before_year}+{self._before_month} ')
             name_list = self.get_current_season_list()
             logger.info(f'本次处理 {len(name_list)} 个文件')
             for file_name in name_list:
@@ -490,8 +489,8 @@ class ANiStrmPro(_PluginBase):
             "onlyonce": False,
             "fulladd": False,
             "use_image": False,
-            "before_month": "0",
-            "before_year": "0",
+            "before_month": "",
+            "before_year": "",
             "storageplace": '/downloads/strm',
             "cron": "*/20 22,23,0,1 * * *",
         }
