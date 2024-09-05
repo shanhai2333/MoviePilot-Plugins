@@ -74,7 +74,7 @@ class ANiStrm(_PluginBase):
     _enabled = False
     _use_image = False
     _image_url = ''
-    _image_down_xml_url = ''
+    _image_rss_url = ''
     # 任务执行间隔
     _cron = None
     _onlyonce = False
@@ -92,7 +92,7 @@ class ANiStrm(_PluginBase):
             self._enabled = config.get("enabled")
             self._use_image = config.get("use_image")
             self._image_url = config.get("image_url")
-            self._image_down_xml_url = config.get("image_down_xml_url")
+            self._image_rss_url = config.get("image_rss_url")
             self._cron = config.get("cron")
             self._onlyonce = config.get("onlyonce")
             self._fulladd = config.get("fulladd")
@@ -147,7 +147,10 @@ class ANiStrm(_PluginBase):
 
     @retry(Exception, tries=3, logger=logger, ret=[])
     def get_latest_list(self) -> List:
-        addr = 'https://api.ani.rip/ani-download.xml'
+        if not self._use_image:
+            addr = 'https://api.ani.rip/ani-download.xml'
+        else:
+            addr = self._image_rss_url
         ret = RequestUtils(ua=settings.USER_AGENT if settings.USER_AGENT else None,
                            proxies=settings.PROXY if settings.PROXY else None).get_res(addr)
         ret_xml = ret.text
@@ -163,13 +166,17 @@ class ANiStrm(_PluginBase):
             # 链接
             link = DomUtils.tag_value(item, "link", default="")
             rss_info['title'] = title
-            rss_info['link'] = link.replace("resources.ani.rip", "aniopen.an-i.workers.dev")
+            if not self._use_image:
+                rss_info['link'] = link.replace("resources.ani.rip", "aniopen.an-i.workers.dev")
             ret_array.append(rss_info)
         return ret_array
 
     def __touch_strm_file(self, file_name, file_url: str = None) -> bool:
         if not file_url:
-            src_url = f'https://aniopen.an-i.workers.dev/{self._date}/{file_name}?d=true'
+            if not self._use_image:
+                src_url = f'https://aniopen.an-i.workers.dev/{self._date}/{file_name}?d=true'
+            else:
+                src_url = f'{self._image_url}/{self._date}/{file_name}?d=true'
         else:
             src_url = file_url
         file_path = f'{self._storageplace}/{file_name}.strm'
@@ -271,6 +278,22 @@ class ANiStrm(_PluginBase):
                                         }
                                     }
                                 ]
+                            },
+                            {
+                                'component': 'VCol',
+                                'props': {
+                                    'cols': 12,
+                                    'md': 4
+                                },
+                                'content': [
+                                    {
+                                        'component': 'VSwitch',
+                                        'props': {
+                                            'model': 'use_image',
+                                            'label': '使用镜像',
+                                        }
+                                    }
+                                ]
                             }
                         ]
                     },
@@ -341,6 +364,57 @@ class ANiStrm(_PluginBase):
                                             'text': 'emby容器需要设置代理，docker的环境变量必须要有http_proxy代理变量，大小写敏感，具体见readme.' + '\n' +
                                                     'https://github.com/honue/MoviePilot-Plugins',
                                             'style': 'white-space: pre-line;'
+                                        }
+                                    },
+                                    {
+                                        'component': 'VAlert',
+                                        'props': {
+                                            'type': 'info',
+                                            'variant': 'tonal',
+                                            'text': '镜像部署教程查看X-yael大佬的博客' + '\n' +
+                                                    'https://blog.x-yael.eu.org/p/ani/',
+                                            'style': 'white-space: pre-line;'
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    # 增加一行输入镜像地址 和  镜像xml下载地址
+                    {
+                        'component': 'VRow',
+                        'v_if': 'use_image',
+                        'content': [
+                            {
+                                'component': 'VCol',
+                                'props': {
+                                    'cols': 12,
+                                    'md': 6
+                                },
+                                'content': [
+                                    {
+                                        'component': 'VTextField',
+                                        'props': {
+                                            'model': 'image_url',
+                                            'label': '镜像地址',
+                                            'placeholder': 'https://ani.v300.eu.org'
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                'component': 'VCol',
+                                'props': {
+                                    'cols': 12,
+                                    'md': 6
+                                },
+                                'content': [
+                                    {
+                                        'component': 'VTextField',
+                                        'props': {
+                                            'model': 'image_rss_url',
+                                            'label': '镜像RSS地址',
+                                            'placeholder': 'https://aniapi.v300.eu.org/ani-download.xml'
                                         }
                                     }
                                 ]
