@@ -336,6 +336,47 @@ class ANiStrm(_PluginBase):
                             }
                         ]
                     },
+                    # 增加一行输入镜像地址 和  镜像xml下载地址
+                    {
+                        'component': 'VRow',
+                        'v_if': 'use_image',
+                        'content': [
+                            {
+                                'component': 'VCol',
+                                'props': {
+                                    'cols': 12,
+                                    'md': 6
+                                },
+                                'content': [
+                                    {
+                                        'component': 'VTextField',
+                                        'props': {
+                                            'model': 'image_url',
+                                            'label': '镜像地址',
+                                            'placeholder': 'https://ani.v300.eu.org'
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                'component': 'VCol',
+                                'props': {
+                                    'cols': 12,
+                                    'md': 6
+                                },
+                                'content': [
+                                    {
+                                        'component': 'VTextField',
+                                        'props': {
+                                            'model': 'image_rss_url',
+                                            'label': '镜像RSS地址',
+                                            'placeholder': 'https://aniapi.v300.eu.org/ani-download.xml'
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
                     {
                         'component': 'VRow',
                         'content': [
@@ -374,47 +415,6 @@ class ANiStrm(_PluginBase):
                                             'text': '镜像部署教程查看X-yael大佬的博客' + '\n' +
                                                     'https://blog.x-yael.eu.org/p/ani/',
                                             'style': 'white-space: pre-line;'
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    # 增加一行输入镜像地址 和  镜像xml下载地址
-                    {
-                        'component': 'VRow',
-                        'v_if': 'use_image',
-                        'content': [
-                            {
-                                'component': 'VCol',
-                                'props': {
-                                    'cols': 12,
-                                    'md': 6
-                                },
-                                'content': [
-                                    {
-                                        'component': 'VTextField',
-                                        'props': {
-                                            'model': 'image_url',
-                                            'label': '镜像地址',
-                                            'placeholder': 'https://ani.v300.eu.org'
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                'component': 'VCol',
-                                'props': {
-                                    'cols': 12,
-                                    'md': 6
-                                },
-                                'content': [
-                                    {
-                                        'component': 'VTextField',
-                                        'props': {
-                                            'model': 'image_rss_url',
-                                            'label': '镜像RSS地址',
-                                            'placeholder': 'https://aniapi.v300.eu.org/ani-download.xml'
                                         }
                                     }
                                 ]
