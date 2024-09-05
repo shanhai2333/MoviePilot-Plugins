@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "1.5"
+    plugin_version = "1.6"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -146,7 +146,6 @@ class ANiStrmPro(_PluginBase):
                            proxies=settings.PROXY if settings.PROXY else None).post(url=url)
         logger.debug(rep.text)
         files_json = rep.json()['files']
-        logger.info(f' {files_json} ')
         return [file['name'] for file in files_json]
 
     @retry(Exception, tries=3, logger=logger, ret=[])
@@ -211,7 +210,7 @@ class ANiStrmPro(_PluginBase):
         # 全量添加当季
         else:
             name_list = self.get_current_season_list()
-            logger.info(f'本次处理 {len(name_list)} 个文件:{name_list}')
+            logger.info(f'本次处理 {len(name_list)} 个文件')
             for file_name in name_list:
                 if self.__touch_strm_file(file_name=file_name):
                     cnt += 1
