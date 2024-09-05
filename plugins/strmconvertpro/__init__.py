@@ -156,13 +156,23 @@ class StrmConvertPro(_PluginBase):
         for f in files:
             logger.debug(f"开始处理文件 {f}")
             try:
-                library_file = str(f).replace(old_api_url, '')
+                #library_file = str(f).replace(old_api_url, '')
                 # 对原url之后的所有内容进行url转码
                 #library_file = urllib.parse.quote(library_file, safe='')
-                api_file = f"http://{new_api_url}/d/{library_file}"
-                with open(f, 'w') as file2:
-                    logger.debug(f"开始写入 api路径 {api_file}")
-                    file2.write(str(api_file))
+                #读取文件内容
+                with open(f, 'r') as file:
+                    content = file.read()
+                    # 获取扩展名
+                    #ext = str(content).split(".")[-1]
+                    library_file = str(content).replace(old_api_url, new_api_url)
+                    # 写入文件
+                    with open(f, 'w') as file2:
+                        logger.debug(f"开始写入 媒体库路径 {library_file}")
+                        file2.write(str(library_file))
+                # api_file = f"http://{new_api_url}/d/{library_file}"
+                # with open(f, 'w') as file2:
+                #     logger.debug(f"开始写入 api路径 {api_file}")
+                #     file2.write(str(api_file))
             except Exception as e:
                 print(e)
 
