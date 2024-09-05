@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "1.9"
+    plugin_version = "1.10"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -223,6 +223,7 @@ class ANiStrmPro(_PluginBase):
                     cnt += 1
         # 全量添加当季
         else:
+            logger.info(f' {self._before_year}+{self._before_month} ')
             name_list = self.get_current_season_list()
             logger.info(f'本次处理 {len(name_list)} 个文件')
             for file_name in name_list:

@@ -2,7 +2,7 @@
   "ANiStrmPro": {
     "name": "ANi Strm Pro",
     "description": "自动获取当季所有番剧，生成strm文件，mp刮削入库，emby直接播放，免去下载，轻松拥有一个番剧媒体库(可配置镜像)",
-    "version": "1.9",
+    "version": "1.10",
     "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png",
     "author": "shanhai2333",
     "level": 2,
