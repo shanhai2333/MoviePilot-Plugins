@@ -15,7 +15,7 @@ class StrmConvertPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/convert.png"
     # 插件版本
-    plugin_version = "1.2"
+    plugin_version = "1.3"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -30,7 +30,7 @@ class StrmConvertPro(_PluginBase):
     # 私有属性
     _to_local = False
     _to_api = False
-    _aip_change = False
+    _api_change = False
     _convert_confs = None
     _library_path = None
     _api_url = None
@@ -39,10 +39,10 @@ class StrmConvertPro(_PluginBase):
         if config:
             self._to_local = config.get("to_local")
             self._to_api = config.get("to_api")
-            self._to_api = config.get("aip_change")
+            self._api_change = config.get("api_change")
             self._convert_confs = config.get("convert_confs")
 
-            if self._to_local and self._to_api and self._aip_change:
+            if self._to_local and self._to_api and self._api_change:
                 logger.error(f"本地模式和API模式和API前缀修改同时只能开启一个")
                 return
 
@@ -63,7 +63,7 @@ class StrmConvertPro(_PluginBase):
             if self._to_api:
                 self.__convert_to_api(convert_confs)
 
-            if self._aip_change:
+            if self._api_change:
                 self.__change_api(convert_confs)
 
 
@@ -368,6 +368,7 @@ class StrmConvertPro(_PluginBase):
         ], {
             "to_local": False,
             "to_api": False,
+            "api_change": False,
             "convert_confs": ""
         }
 
