@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "1.4"
+    plugin_version = "1.5"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -180,7 +180,10 @@ class ANiStrmPro(_PluginBase):
             if not self._use_image:
                 src_url = f'https://aniopen.an-i.workers.dev/{self._date}/{file_name}?d=true'
             else:
-                src_url = f'{self._image_url}/{self._date}/{file_name}?d=true'
+                # 以.拆分file_name，最后为拓展名，srt和vtt忽略
+                file_name_split = file_name.split('.')
+                if not (file_name_split[-1] in ['srt', 'vtt']):
+                    src_url = f'{self._image_url}/{self._date}/{file_name}?d=true'
         else:
             src_url = file_url
         file_path = f'{self._storageplace}/{file_name}.strm'
