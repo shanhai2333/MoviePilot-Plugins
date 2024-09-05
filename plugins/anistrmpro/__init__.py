@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "1.2"
+    plugin_version = "1.3"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -427,6 +427,7 @@ class ANiStrmPro(_PluginBase):
             "enabled": False,
             "onlyonce": False,
             "fulladd": False,
+            "use_image": False,
             "storageplace": '/downloads/strm',
             "cron": "*/20 22,23,0,1 * * *",
         }
@@ -438,6 +439,9 @@ class ANiStrmPro(_PluginBase):
             "enabled": self._enabled,
             "fulladd": self._fulladd,
             "storageplace": self._storageplace,
+            "use_image": self._use_image,
+            "image_url": self._image_url,
+            "image_rss_url": self._image_rss_url
         })
 
     def get_page(self) -> List[dict]:
