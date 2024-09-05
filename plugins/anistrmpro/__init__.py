@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "1.6"
+    plugin_version = "1.7"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -79,6 +79,8 @@ class ANiStrmPro(_PluginBase):
     _cron = None
     _onlyonce = False
     _fulladd = False
+    _before_month = 0
+    _before_year = 0
     _storageplace = None
 
     # 定时器
@@ -96,6 +98,8 @@ class ANiStrmPro(_PluginBase):
             self._cron = config.get("cron")
             self._onlyonce = config.get("onlyonce")
             self._fulladd = config.get("fulladd")
+            self._before_month = config.get("before_month")
+            self._before_year = config.get("before_year")
             self._storageplace = config.get("storageplace")
             # 加载模块
         if self._enabled or self._onlyonce:
@@ -127,9 +131,13 @@ class ANiStrmPro(_PluginBase):
                 self._scheduler.start()
 
     def __get_ani_season(self, idx_month: int = None) -> str:
-        current_date = datetime.now()
-        current_year = current_date.year
-        current_month = idx_month if idx_month else current_date.month
+        if self._before_month != 0 & self._before_year !=0:
+            current_year = self._before_year
+            current_month = self._before_month
+        else:
+            current_date = datetime.now()
+            current_year = current_date.year
+            current_month = idx_month if idx_month else current_date.month
         for month in range(current_month, 0, -1):
             if month in [10, 7, 4, 1]:
                 self._date = f'{current_year}-{month}'
@@ -342,6 +350,47 @@ class ANiStrmPro(_PluginBase):
                             }
                         ]
                     },
+                    # 增加一行输入年月
+                    {
+                        'component': 'VRow',
+                        'v_if': 'use_image',
+                        'content': [
+                            {
+                                'component': 'VCol',
+                                'props': {
+                                    'cols': 12,
+                                    'md': 6
+                                },
+                                'content': [
+                                    {
+                                        'component': 'VTextField',
+                                        'props': {
+                                            'model': 'before_year',
+                                            'label': '年',
+                                            'placeholder': '最少2020'
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                'component': 'VCol',
+                                'props': {
+                                    'cols': 12,
+                                    'md': 6
+                                },
+                                'content': [
+                                    {
+                                        'component': 'VTextField',
+                                        'props': {
+                                            'model': 'before_month',
+                                            'label': '月',
+                                            'placeholder': '2020年时最少4'
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
                     # 增加一行输入镜像地址 和  镜像xml下载地址
                     {
                         'component': 'VRow',
@@ -434,6 +483,8 @@ class ANiStrmPro(_PluginBase):
             "onlyonce": False,
             "fulladd": False,
             "use_image": False,
+            "before_month": "0",
+            "before_year": "0",
             "storageplace": '/downloads/strm',
             "cron": "*/20 22,23,0,1 * * *",
         }
