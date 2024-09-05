@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "1.14"
+    plugin_version = "2.0"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -209,7 +209,7 @@ class ANiStrmPro(_PluginBase):
                 logger.debug(f'创建 {file_name}.strm 文件成功')
                 return True
         except Exception as e:
-            logger.error('创建strm源文件失败：' + str(e) + f',{src_url}')
+            logger.error('创建strm源文件失败：' + str(e) + ',{src_url}')
             return False
 
     def __task(self, fulladd: bool = False):
