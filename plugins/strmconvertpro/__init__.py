@@ -9,7 +9,7 @@ from app.log import logger
 
 class StrmConvert(_PluginBase):
     # 插件名称
-    plugin_name = "Strm链接前缀修改"
+    plugin_name = "Strm文件模式转换（增强版）"
     # 插件描述
     plugin_desc = "Strm文件内容转为本地路径或者cd2/alist API路径。(添加api前缀修改)"
     # 插件图标
