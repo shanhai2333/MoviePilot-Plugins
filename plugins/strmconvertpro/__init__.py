@@ -15,7 +15,7 @@ class StrmConvertPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/convert.png"
     # 插件版本
-    plugin_version = "1.3"
+    plugin_version = "1.4"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -245,6 +245,22 @@ class StrmConvertPro(_PluginBase):
                                         'props': {
                                             'model': 'to_api',
                                             'label': '转为API模式',
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                'component': 'VCol',
+                                'props': {
+                                    'cols': 12,
+                                    'md': 6
+                                },
+                                'content': [
+                                    {
+                                        'component': 'VSwitch',
+                                        'props': {
+                                            'model': 'api_change',
+                                            'label': '直链前缀修改',
                                         }
                                     }
                                 ]
