@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.0"
+    plugin_version = "2.1"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -185,6 +185,7 @@ class ANiStrmPro(_PluginBase):
             rss_info['title'] = title
             if not self._use_image:
                 rss_info['link'] = link.replace("resources.ani.rip", "aniopen.an-i.workers.dev")
+            logger.info(f'{rss_info}')
             ret_array.append(rss_info)
         return ret_array
 
@@ -219,6 +220,7 @@ class ANiStrmPro(_PluginBase):
             rss_info_list = self.get_latest_list()
             logger.info(f'本次处理 {len(rss_info_list)} 个文件')
             for rss_info in rss_info_list:
+                logger.info(f'{rss_info}')
                 if self.__touch_strm_file(file_name=rss_info['title'], file_url=rss_info['link']):
                     cnt += 1
         # 全量添加当季
