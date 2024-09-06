@@ -185,7 +185,8 @@ class ANiStrmPro(_PluginBase):
             rss_info['title'] = title
             if not self._use_image:
                 rss_info['link'] = link.replace("resources.ani.rip", "aniopen.an-i.workers.dev")
-            logger.info(f'{rss_info}')
+            else:
+                rss_info['link'] = link
             ret_array.append(rss_info)
         return ret_array
 
@@ -220,7 +221,6 @@ class ANiStrmPro(_PluginBase):
             rss_info_list = self.get_latest_list()
             logger.info(f'本次处理 {len(rss_info_list)} 个文件')
             for rss_info in rss_info_list:
-                logger.info(f'{rss_info}')
                 if self.__touch_strm_file(file_name=rss_info['title'], file_url=rss_info['link']):
                     cnt += 1
         # 全量添加当季
