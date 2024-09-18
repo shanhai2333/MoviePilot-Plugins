@@ -15,9 +15,9 @@ class StrmConvertPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/convert.png"
     # 插件版本
-    plugin_version = "1.5"
+    plugin_version = "1.6"
     # 插件作者
-    plugin_author = "shanhai2333"
+    plugin_author = "thsrite,shanhai2333"
     # 作者主页
     author_url = "https://github.com/shanhai2333"
     # 插件配置项ID前缀
