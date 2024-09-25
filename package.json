@@ -26,5 +26,16 @@
       "v1.6": "Strm文件内容转为本地路径或者cd2/alist API路径,(添加结构一致的url替换)",
       "v1.0": "Strm文件内容转为本地路径或者cd2/alist API路径"
     }
+  },
+  "Pushplusplugin": {
+    "name": "Pushplus消息推送",
+    "description": "Pushplus消息推送",
+    "version": "1.0",
+    "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/Pushplusplugin.png",
+    "author": "shanhai2333",
+    "level": 1,
+    "history": {
+      "v1.0": "Pushplus消息推送,增加群发"
+    }
   }
 }
