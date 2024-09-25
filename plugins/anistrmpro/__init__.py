@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.2"
+    plugin_version = "2.3"
     # 插件作者
     plugin_author = "honue,shanhai2333"
     # 作者主页
@@ -141,12 +141,11 @@ class ANiStrmPro(_PluginBase):
             current_date = datetime.now()
             current_year = current_date.year
             current_month = idx_month if idx_month else current_date.month
-
-        logger.info(f"2获取指定{current_year}年{current_month}月所在季度番剧信息")
-        for month in range(current_month, 0, -1):
-            if month in [10, 7, 4, 1]:
-                self._date = f'{current_year}-{month}'
-                return f'{current_year}-{month}'
+            logger.info(f"2获取指定{current_year}年{current_month}月所在季度番剧信息")
+            for month in range(current_month, 0, -1):
+                if month in [10, 7, 4, 1]:
+                    self._date = f'{current_year}-{month}'
+                    return f'{current_year}-{month}'
 
     @retry(Exception, tries=3, logger=logger, ret=[])
     def get_current_season_list(self) -> List:
@@ -197,7 +196,7 @@ class ANiStrmPro(_PluginBase):
             else:
                 # 以.拆分file_name，最后为拓展名，srt和vtt忽略
                 file_name_split = file_name.split('.')
-                if not (file_name_split[-1] in ['srt', 'vtt']):
+                if not (file_name_split[1] in ['srt', 'vtt']):
                     src_url = f'{self._image_url}/{self._date}/{file_name}?d=true'
         else:
             src_url = file_url
