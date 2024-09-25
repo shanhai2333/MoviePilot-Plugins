@@ -13,9 +13,9 @@ class PushPlusMsg(_PluginBase):
     # 插件描述
     plugin_desc = "使用PushPlus发送消息通知，支持群发。"
     # 插件图标
-    plugin_icon = "Pushplusplugin.png"
+    plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/Pushplusplugin.png"
     # 插件版本
-    plugin_version = "1.5"
+    plugin_version = "1.6"
     # 插件作者
     plugin_author = "cheng,shanhai2333"
     # 作者主页
