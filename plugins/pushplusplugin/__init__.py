@@ -9,19 +9,19 @@ from app.utils.http import RequestUtils
 
 class PushPlusMsg(_PluginBase):
     # 插件名称
-    plugin_name = "PushPlus推送"
+    plugin_name = "PushPlus消息推送(群发)"
     # 插件描述
     plugin_desc = "使用PushPlus发送消息通知，支持群发。"
     # 插件图标
     plugin_icon = "Pushplusplugin.png"
     # 插件版本
-    plugin_version = "1.4"
+    plugin_version = "1.5"
     # 插件作者
     plugin_author = "cheng,shanhai2333"
     # 作者主页
     author_url = "https://github.com/shanhai2333"
     # 插件配置项ID前缀
-    plugin_config_prefix = "pushplusmessage_"
+    plugin_config_prefix = "pushplusmsgs_"
     # 加载顺序
     plugin_order = 27
     # 可使用的用户级别
