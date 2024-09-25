@@ -23,7 +23,7 @@ class PushPlusMsg(_PluginBase):
     # 插件配置项ID前缀
     plugin_config_prefix = "pushplusmessage_"
     # 加载顺序
-    plugin_order = 233
+    plugin_order = 27
     # 可使用的用户级别
     auth_level = 1
 
