@@ -7,7 +7,7 @@
     "author": "honue,shanhai2333",
     "level": 2,
     "history": {
-      "v2.3": "bug修复",
+      "v2.4": "过滤rss中无链接项",
       "v2.2": "增加日志提示",
       "v1.7": "获取之前季度动漫",
       "v1.5": "过滤vtt srt字幕文件",
