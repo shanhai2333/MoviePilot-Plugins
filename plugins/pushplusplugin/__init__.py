@@ -7,7 +7,7 @@ from app.schemas.types import EventType, NotificationType
 from app.utils.http import RequestUtils
 
 
-class PushPlusMsg(_PluginBase):
+class PushPlusMsgs(_PluginBase):
     # 插件名称
     plugin_name = "PushPlus消息推送(群发)"
     # 插件描述
