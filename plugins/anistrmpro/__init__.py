@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.4"
+    plugin_version = "2.5"
     # 插件作者
     plugin_author = "honue,shanhai2333"
     # 作者主页
@@ -134,18 +134,18 @@ class ANiStrmPro(_PluginBase):
         current_year = 0
         current_month = 0
         if int(self._before_year) in [2024, 2023, 2022, 2021, 2020]:
-            logger.info(f"1获取指定{self._before_year}年{self._before_month}月所在季度番剧信息")
             current_year = int(self._before_year)
             current_month = int(self._before_month)
         else:
             current_date = datetime.now()
             current_year = current_date.year
             current_month = idx_month if idx_month else current_date.month
-            logger.info(f"2获取指定{current_year}年{current_month}月所在季度番剧信息")
-            for month in range(current_month, 0, -1):
-                if month in [10, 7, 4, 1]:
-                    self._date = f'{current_year}-{month}'
-                    return f'{current_year}-{month}'
+
+        logger.info(f"获取指定{current_year}年{current_month}月所在季度番剧信息")
+        for month in range(current_month, 0, -1):
+            if month in [10, 7, 4, 1]:
+                self._date = f'{current_year}-{month}'
+                return f'{current_year}-{month}'
 
     @retry(Exception, tries=3, logger=logger, ret=[])
     def get_current_season_list(self) -> List:
