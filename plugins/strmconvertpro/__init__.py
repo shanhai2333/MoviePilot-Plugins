@@ -137,7 +137,7 @@ class StrmConvertPro(_PluginBase):
 
     def __change_api(self, convert_confs: list):
         """
-        修改api前缀
+        修改url前缀
         """
         for convert_conf in convert_confs:
             if str(convert_conf).count("#") != 2:
