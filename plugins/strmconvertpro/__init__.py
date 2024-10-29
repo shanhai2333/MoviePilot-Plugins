@@ -359,7 +359,7 @@ class StrmConvertPro(_PluginBase):
                                         'props': {
                                             'type': 'info',
                                             'variant': 'tonal',
-                                            'text': 'strm结构不变修改前缀：'
+                                            'text': 'strm修改前缀url：'
                                                     'strm文件根路径#旧url#新url。'
                                         }
                                     }
