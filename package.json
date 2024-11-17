@@ -6,6 +6,7 @@
     "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png",
     "author": "honue,shanhai2333",
     "level": 2,
+    "v2": true,
     "history": {
       "v2.5": "过滤rss中无链接项",
       "v2.2": "增加日志提示",
@@ -23,6 +24,7 @@
     "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/convert.png",
     "author": "thsrite,shanhai2333",
     "level": 1,
+    "v2": true,
     "history": {
       "v1.6": "Strm文件内容转为本地路径或者cd2/alist API路径,(添加结构一致的url替换)",
       "v1.0": "Strm文件内容转为本地路径或者cd2/alist API路径"
@@ -35,6 +37,7 @@
     "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/Pushplusplugin.png",
     "author": "cheng,shanhai2333",
     "level": 1,
+    "v2": true,
     "history": {
       "v1.1": "增加群发功能"
     }
