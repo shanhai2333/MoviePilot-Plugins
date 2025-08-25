@@ -17,7 +17,7 @@ class PathKeywordRename(_PluginBase):
     # 插件描述
     plugin_desc = "根据文件目标路径中的关键字，将对应的目录名附加到文件名末尾，或使用自定义名称。"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/InfinityPacer/MoviePilot-Plugins/main/icons/smartrename.png"
+    plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/pathkeywordrename.png"
     # 插件版本
     plugin_version = "2.1"
     # 插件作者
