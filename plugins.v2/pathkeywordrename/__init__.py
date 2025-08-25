@@ -19,13 +19,13 @@ class PathKeywordRename(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/InfinityPacer/MoviePilot-Plugins/main/icons/smartrename.png"
     # 插件版本
-    plugin_version = "1.2"
+    plugin_version = "1.3"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
     author_url = "https://github.com/shanhai2333"
     # 插件配置项ID前缀
-    plugin_config_prefix = "pathkeywordrename_"
+    plugin_config_prefix = "pathrename_"
     # 加载顺序
     plugin_order = 43
     # 可使用的用户级别
