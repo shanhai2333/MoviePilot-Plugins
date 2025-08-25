@@ -16,20 +16,6 @@
       "v1.0": "自动获取当季所有番剧，生成strm文件，mp刮削入库，emby直接播放，免去下载，轻松拥有一个番剧媒体库"
     }
   },
-  "StrmConvertPro": {
-    "name": "Strm文件模式转换(增强版)",
-    "description": "Strm文件内容转为本地路径或者cd2/alist API路径。",
-    "labels": "云盘",
-    "version": "1.6",
-    "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/convert.png",
-    "author": "thsrite,shanhai2333",
-    "level": 1,
-    "v2": true,
-    "history": {
-      "v1.6": "Strm文件内容转为本地路径或者cd2/alist API路径,(添加结构一致的url替换)",
-      "v1.0": "Strm文件内容转为本地路径或者cd2/alist API路径"
-    }
-  },
   "PushPlusMsgs": {
     "name": "PushPlus消息推送(群发)",
     "description": "Pushplus消息推送",
@@ -40,6 +26,18 @@
     "v2": true,
     "history": {
       "v1.1": "增加群发功能"
+    }
+  },
+  "PathKeywordRename": {
+    "name": "路径关键字重命名",
+    "description": "根据文件目标路径中的关键字，将对应的目录名附加到文件名末尾。",
+    "version": "2.0",
+    "icon": "https://raw.githubusercontent.com/InfinityPacer/MoviePilot-Plugins/main/icons/smartrename.png",
+    "author": "InfinityPacer",
+    "level": 1,
+    "v2": true,
+    "history": {
+      "v2.0": "仅保留路径关键字重命名功能，并简化代码"
     }
   }
 }
