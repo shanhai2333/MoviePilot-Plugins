@@ -19,7 +19,7 @@ class PathKeywordRename(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/pathkeywordrename.png"
     # 插件版本
-    plugin_version = "2.1"
+    plugin_version = "2.1.1"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -191,7 +191,7 @@ class PathKeywordRename(_PluginBase):
                 # 获取目录路径
                 dir_path = os.path.dirname(event.event_data.path)
                 # 分割路径
-                path_parts = dir_path.replace("\", "/").split("/")
+                path_parts = dir_path.replace("\\", "/").split("/")
                 
                 for part in reversed(path_parts):
                     for keyword, custom_name in ordered_keywords:
