@@ -19,7 +19,7 @@ class PathKeywordRename(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/InfinityPacer/MoviePilot-Plugins/main/icons/smartrename.png"
     # 插件版本
-    plugin_version = "1.4"
+    plugin_version = "1.6"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -37,7 +37,7 @@ class PathKeywordRename(_PluginBase):
     # 路径关键字
     _path_keyword: Optional[str] = None
     # 路径关键字分隔符
-    _path_keyword_separator: Optional[str] = " "
+    _path_keyword_separator: Optional[str] = " - "
 
     # endregion
 
@@ -47,7 +47,7 @@ class PathKeywordRename(_PluginBase):
 
         self._enabled = config.get("enabled") or False
         self._path_keyword = config.get("path_keyword")
-        self._path_keyword_separator = config.get("path_keyword_separator") or " "
+        self._path_keyword_separator = config.get("path_keyword_separator") or " - "
 
     def get_state(self) -> bool:
         return self._enabled
@@ -105,7 +105,7 @@ class PathKeywordRename(_PluginBase):
                                         'props': {
                                             'model': 'path_keyword',
                                             'label': '路径关键字',
-                                            'hint': '当目标路径的目录名包含此关键字时，将该目录名附加到文件名末尾',
+                                            'hint': '可输入多个关键字，用英文逗号 (,) 分隔。当目录名包含任意一个关键字时，该目录名会被附加到文件名末尾',
                                             'persistent-hint': True
                                         }
                                     }
@@ -123,7 +123,7 @@ class PathKeywordRename(_PluginBase):
                                         'props': {
                                             'model': 'path_keyword_separator',
                                             'label': '路径关键字分隔符',
-                                            'hint': '文件名与附加的目录名之间的分隔符，默认为空格',
+                                            'hint': '文件名与附加的目录名之间的分隔符，默认为 - ',
                                             'persistent-hint': True
                                         }
                                     }
@@ -136,7 +136,7 @@ class PathKeywordRename(_PluginBase):
         ], {
             "enabled": False,
             "path_keyword": "",
-            "path_keyword_separator": " "
+            "path_keyword_separator": " - "
         }
 
     def get_page(self) -> List[dict]:
@@ -169,14 +169,19 @@ class PathKeywordRename(_PluginBase):
             # 路径关键字处理
             if self._path_keyword and hasattr(event_data, 'path') and event_data.path:
                 logger.debug(f"路径关键字功能已启用，关键字: '{self._path_keyword}', 目标路径: '{event_data.path}'")
+
+                keywords = [k.strip() for k in self._path_keyword.split(',') if k.strip()]
+                if not keywords:
+                    return
+                    
                 # 获取目录路径
                 dir_path = os.path.dirname(event_data.path)
                 # 分割路径
-                path_parts = dir_path.replace("\\", "/").split("/")
+                path_parts = dir_path.replace("\", "/").split("/")
                 for part in reversed(path_parts):
-                    if self._path_keyword in part:
-                        logger.info(f"在路径中找到关键字 '{self._path_keyword}' 于目录 '{part}'，将把目录名附加到文件名中。")
-                        separator = self._path_keyword_separator or ' '
+                    if any(keyword in part for keyword in keywords):
+                        logger.info(f"在路径中找到关键字于目录 '{part}'，将把目录名附加到文件名中。" )
+                        separator = self._path_keyword_separator or ' - '
                         updated_str = f"{updated_str}{separator}{part}"
                         logger.debug(f"附加目录名后的字符串: {updated_str}")
                         break
