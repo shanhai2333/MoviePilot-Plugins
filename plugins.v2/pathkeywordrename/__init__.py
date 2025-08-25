@@ -15,11 +15,11 @@ class PathKeywordRename(_PluginBase):
     # 插件名称
     plugin_name = "路径关键字重命名"
     # 插件描述
-    plugin_desc = "根据文件目标路径中的关键字，将对应的目录名附加到文件名末尾。"
+    plugin_desc = "根据文件目标路径中的关键字，将对应的目录名附加到文件名末尾，或使用自定义名称。"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/InfinityPacer/MoviePilot-Plugins/main/icons/smartrename.png"
     # 插件版本
-    plugin_version = "1.8"
+    plugin_version = "2.0"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -97,7 +97,7 @@ class PathKeywordRename(_PluginBase):
                                 'component': 'VCol',
                                 'props': {
                                     'cols': 12,
-                                    'md': 6
+                                    'md': 12
                                 },
                                 'content': [
                                     {
@@ -105,12 +105,17 @@ class PathKeywordRename(_PluginBase):
                                         'props': {
                                             'model': 'path_keyword',
                                             'label': '路径关键字',
-                                            'hint': '可输入多个关键字，用英文逗号 (,) 分隔。当目录名包含任意一个关键字时，该目录名会被附加到文件名末尾',
+                                            'hint': '格式：关键字1:自定义名1,关键字2,关键字3:自定义名3。用英文逗号 (,) 分隔，冒号 (:) 用于分隔关键字和自定义名，如果未提供自定义名，则使用目录名。',
                                             'persistent-hint': True
                                         }
                                     }
                                 ]
-                            },
+                            }
+                        ]
+                    },
+                    {
+                        'component': 'VRow',
+                        'content': [
                             {
                                 'component': 'VCol',
                                 'props': {
@@ -170,30 +175,44 @@ class PathKeywordRename(_PluginBase):
             if self._path_keyword and hasattr(event_data, 'path') and event_data.path:
                 logger.debug(f"路径关键字功能已启用，关键字: '{self._path_keyword}', 目标路径: '{event_data.path}'")
 
-                keywords = [k.strip() for k in self._path_keyword.split(',') if k.strip()]
-                if not keywords:
+                keyword_pairs = [k.strip() for k in self._path_keyword.split(',') if k.strip()]
+                if not keyword_pairs:
                     return
-                    
+
+                keyword_map = {}
+                for pair in keyword_pairs:
+                    if ':' in pair:
+                        keyword, custom_name = pair.split(':', 1)
+                        keyword_map[keyword.strip()] = custom_name.strip()
+                    else:
+                        keyword_map[pair.strip()] = None
+                
                 # 获取目录路径
                 dir_path = os.path.dirname(event_data.path)
                 # 分割路径
-                path_parts = dir_path.replace("\\", "/").split("/")
+                path_parts = dir_path.replace("", "/").split("/")
                 for part in reversed(path_parts):
-                    if any(keyword in part for keyword in keywords):
-                        logger.info(f"在路径中找到关键字于目录 '{part}'，将把目录名附加到文件名中。" )
-                        separator = self._path_keyword_separator or ' - '
-                        name, ext = os.path.splitext(updated_str)
-                        updated_str = f"{name}{separator}{part}{ext}"
-                        logger.debug(f"附加目录名后的字符串: {updated_str}")
-                        break
+                    for keyword, custom_name in keyword_map.items():
+                        if keyword in part:
+                            logger.info(f"在路径中找到关键字 '{keyword}' 于目录 '{part}'。")
+                            name, ext = os.path.splitext(updated_str)
+                            if custom_name:
+                                updated_str = f"{custom_name}{ext}"
+                                logger.info(f"使用自定义命名 '{custom_name}'。)"
+                            else:
+                                separator = self._path_keyword_separator or ' - '
+                                updated_str = f"{name}{separator}{part}{ext}"
+                                logger.debug(f"附加目录名后的字符串: {updated_str}")
+                            
+                            # Mark as updated and break from all loops
+                            if updated_str and updated_str != event_data.render_str:
+                                event_data.updated_str = updated_str
+                                event_data.updated = True
+                                event_data.source = self.plugin_name
+                                logger.info(f"重命名完成，{event_data.render_str} -> {updated_str}")
+                            else:
+                                logger.debug(f"重命名结果与原始值相同，跳过更新")
+                            return # Exit after first match
 
-            # 仅在有实际更新时，标记更新状态
-            if updated_str and updated_str != event_data.render_str:
-                event_data.updated_str = updated_str
-                event_data.updated = True
-                event_data.source = self.plugin_name
-                logger.info(f"重命名完成，{event_data.render_str} -> {updated_str}")
-            else:
-                logger.debug(f"重命名结果与原始值相同，跳过更新")
         except Exception as e:
             logger.error(f"重命名发生未知异常: {e}", exc_info=True)

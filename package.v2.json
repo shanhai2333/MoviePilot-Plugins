@@ -1,12 +1,14 @@
 {
   "PathKeywordRename": {
     "name": "路径关键字重命名",
-    "description": "根据文件目标路径中的关键字，将对应的目录名附加到文件名末尾。",
-    "version": "1.8",
+    "description": "根据文件目标路径中的关键字，将对应的目录名附加到文件名末尾，或使用自定义名称。",
+    "version": "2.0",
     "icon": "https://raw.githubusercontent.com/InfinityPacer/MoviePilot-Plugins/main/icons/smartrename.png",
     "author": "InfinityPacer,shanhai2333",
     "level": 1,
     "history": {
+      "v2.0": "支持为每个关键字设置不同的手动命名",
+      "v1.9": "新增手动命名功能",
       "v1.8": "修复了目录名附加在扩展名之后的问题",
       "v1.3": "修改bug",
       "v1.0": "根据文件目标路径中的关键字，将对应的目录名附加到文件名末尾。"
