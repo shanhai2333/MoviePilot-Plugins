@@ -19,7 +19,7 @@ class PathKeywordRename(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/InfinityPacer/MoviePilot-Plugins/main/icons/smartrename.png"
     # 插件版本
-    plugin_version = "2.0"
+    plugin_version = "2.1"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -169,47 +169,48 @@ class PathKeywordRename(_PluginBase):
             return
 
         try:
-            updated_str = event_data.render_str
+            updated_str = event.event_data.render_str
 
             # 路径关键字处理
-            if self._path_keyword and hasattr(event_data, 'path') and event_data.path:
-                logger.debug(f"路径关键字功能已启用，关键字: '{self._path_keyword}', 目标路径: '{event_data.path}'")
+            if self._path_keyword and hasattr(event.event_data, 'path') and event.event_data.path:
+                logger.debug(f"路径关键字功能已启用，关键字: '{self._path_keyword}', 目标路径: '{event.event_data.path}'")
 
-                keyword_pairs = [k.strip() for k in self._path_keyword.split(',') if k.strip()]
-                if not keyword_pairs:
+                keyword_pairs_str = [k.strip() for k in self._path_keyword.split(',') if k.strip()]
+                if not keyword_pairs_str:
                     return
 
-                keyword_map = {}
-                for pair in keyword_pairs:
+                # Preserve order for prioritization
+                ordered_keywords = []
+                for pair in keyword_pairs_str:
                     if ':' in pair:
                         keyword, custom_name = pair.split(':', 1)
-                        keyword_map[keyword.strip()] = custom_name.strip()
+                        ordered_keywords.append((keyword.strip(), custom_name.strip()))
                     else:
-                        keyword_map[pair.strip()] = None
+                        ordered_keywords.append((pair.strip(), None))
                 
                 # 获取目录路径
-                dir_path = os.path.dirname(event_data.path)
+                dir_path = os.path.dirname(event.event_data.path)
                 # 分割路径
-                path_parts = dir_path.replace("", "/").split("/")
+                path_parts = dir_path.replace("\", "/").split("/")
+                
                 for part in reversed(path_parts):
-                    for keyword, custom_name in keyword_map.items():
+                    for keyword, custom_name in ordered_keywords:
                         if keyword in part:
                             logger.info(f"在路径中找到关键字 '{keyword}' 于目录 '{part}'。")
                             name, ext = os.path.splitext(updated_str)
                             if custom_name:
                                 updated_str = f"{custom_name}{ext}"
-                                logger.info(f"使用自定义命名 '{custom_name}'。)"
+                                logger.info(f"使用自定义命名 '{custom_name}'。")
                             else:
                                 separator = self._path_keyword_separator or ' - '
                                 updated_str = f"{name}{separator}{part}{ext}"
                                 logger.debug(f"附加目录名后的字符串: {updated_str}")
                             
-                            # Mark as updated and break from all loops
-                            if updated_str and updated_str != event_data.render_str:
-                                event_data.updated_str = updated_str
-                                event_data.updated = True
-                                event_data.source = self.plugin_name
-                                logger.info(f"重命名完成，{event_data.render_str} -> {updated_str}")
+                            if updated_str and updated_str != event.event_data.render_str:
+                                event.event_data.updated_str = updated_str
+                                event.event_data.updated = True
+                                event.event_data.source = self.plugin_name
+                                logger.info(f"重命名完成，{event.event_data.render_str} -> {updated_str}")
                             else:
                                 logger.debug(f"重命名结果与原始值相同，跳过更新")
                             return # Exit after first match
