@@ -2,7 +2,7 @@
   "PathKeywordRename": {
     "name": "路径关键字重命名",
     "description": "根据文件目标路径中的关键字，将对应的目录名附加到文件名末尾，或使用自定义名称。",
-    "version": "2.1.1",
+    "version": "2.1.2",
     "icon": "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/pathkeywordrename.png",
     "author": "shanhai2333",
     "level": 1,

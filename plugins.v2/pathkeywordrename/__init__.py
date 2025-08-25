@@ -19,7 +19,7 @@ class PathKeywordRename(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/pathkeywordrename.png"
     # 插件版本
-    plugin_version = "2.1.1"
+    plugin_version = "2.1.2"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -199,7 +199,8 @@ class PathKeywordRename(_PluginBase):
                             logger.info(f"在路径中找到关键字 '{keyword}' 于目录 '{part}'。")
                             name, ext = os.path.splitext(updated_str)
                             if custom_name:
-                                updated_str = f"{custom_name}{ext}"
+                                separator = self._path_keyword_separator or ' - '
+                                updated_str = f"{name}{separator}{custom_name}{ext}"
                                 logger.info(f"使用自定义命名 '{custom_name}'。")
                             else:
                                 separator = self._path_keyword_separator or ' - '
