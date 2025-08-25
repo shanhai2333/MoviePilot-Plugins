@@ -19,7 +19,7 @@ class PathKeywordRename(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/InfinityPacer/MoviePilot-Plugins/main/icons/smartrename.png"
     # 插件版本
-    plugin_version = "1.6"
+    plugin_version = "1.7"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -177,7 +177,7 @@ class PathKeywordRename(_PluginBase):
                 # 获取目录路径
                 dir_path = os.path.dirname(event_data.path)
                 # 分割路径
-                path_parts = dir_path.replace("\", "/").split("/")
+                path_parts = dir_path.replace("\\", "/").split("/")
                 for part in reversed(path_parts):
                     if any(keyword in part for keyword in keywords):
                         logger.info(f"在路径中找到关键字于目录 '{part}'，将把目录名附加到文件名中。" )
