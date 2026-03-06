@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.7"
+    plugin_version = "2.8"
     # 插件作者
     plugin_author = "honue,shanhai2333"
     # 作者主页
@@ -135,7 +135,7 @@ class ANiStrmPro(_PluginBase):
     def __get_ani_season(self, idx_month: int = None) -> str:
         current_year = 0
         current_month = 0
-        if int(self._before_year) in [2024, 2023, 2022, 2021, 2020]:
+        if int(self._before_year) in [2025, 2024, 2023, 2022, 2021, 2020]:
             current_year = int(self._before_year)
             current_month = int(self._before_month)
         else:
