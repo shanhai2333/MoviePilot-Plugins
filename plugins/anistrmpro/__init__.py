@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.5"
+    plugin_version = "2.6"
     # 插件作者
     plugin_author = "honue,shanhai2333"
     # 作者主页
@@ -82,6 +82,7 @@ class ANiStrmPro(_PluginBase):
     _before_month = ''
     _before_year = ''
     _storageplace = None
+    _filename_remove = ''
 
     # 定时器
     _scheduler: Optional[BackgroundScheduler] = None
@@ -101,6 +102,7 @@ class ANiStrmPro(_PluginBase):
             self._before_month = config.get("before_month")
             self._before_year = config.get("before_year")
             self._storageplace = config.get("storageplace")
+            self._filename_remove = config.get("filename_remove")
             # 加载模块
         if self._enabled or self._onlyonce:
             # 定时服务
@@ -110,16 +112,16 @@ class ANiStrmPro(_PluginBase):
                 try:
                     self._scheduler.add_job(func=self.__task,
                                             trigger=CronTrigger.from_crontab(self._cron),
-                                            name="ANiStrm文件创建")
-                    logger.info(f'ANi-Strm定时任务创建成功：{self._cron}')
+                                            name="ANiStrm 文件创建")
+                    logger.info(f'ANi-Strm 定时任务创建成功：{self._cron}')
                 except Exception as err:
                     logger.error(f"定时任务配置错误：{str(err)}")
 
             if self._onlyonce:
-                logger.info(f"ANi-Strm服务启动，立即运行一次")
+                logger.info(f"ANi-Strm 服务启动，立即运行一次")
                 self._scheduler.add_job(func=self.__task, args=[self._fulladd], trigger='date',
                                         run_date=datetime.now(tz=pytz.timezone(settings.TZ)) + timedelta(seconds=3),
-                                        name="ANiStrm文件创建")
+                                        name="ANiStrm 文件创建")
                 # 关闭一次性开关 全量转移
                 self._onlyonce = False
                 self._fulladd = False
@@ -189,28 +191,49 @@ class ANiStrmPro(_PluginBase):
             ret_array.append(rss_info)
         return ret_array
 
+    def __remove_strings(self, file_name: str) -> str:
+        """
+        从文件名中删除配置的字符串
+        :param file_name: 原始文件名
+        :return: 处理后的文件名
+        """
+        if not self._filename_remove:
+            return file_name
+        
+        # 使用 @ 分割字符串，逐个删除
+        remove_list = self._filename_remove.split('@')
+        for remove_str in remove_list:
+            remove_str = remove_str.strip()
+            if remove_str:
+                file_name = file_name.replace(remove_str, '')
+        
+        return file_name
+
     def __touch_strm_file(self, file_name, file_url: str = None) -> bool:
         if not file_url:
             if not self._use_image:
                 src_url = f'https://aniopen.an-i.workers.dev/{self._date}/{file_name}?d=true'
             else:
-                # 以.拆分file_name，最后为拓展名，srt和vtt忽略
+                # 以。拆分 file_name，最后为拓展名，srt 和 vtt 忽略
                 file_name_split = file_name.split('.')
                 if not (file_name_split[1] in ['srt', 'vtt']):
                     src_url = f'{self._image_url}/{self._date}/{file_name}?d=true'
         else:
             src_url = file_url
-        file_path = f'{self._storageplace}/{file_name}.strm'
+        
+        # 处理文件名，删除配置的字符串
+        clean_file_name = self.__remove_strings(file_name)
+        file_path = f'{self._storageplace}/{clean_file_name}.strm'
         if os.path.exists(file_path):
-            logger.debug(f'{file_name}.strm 文件已存在')
+            logger.debug(f'{clean_file_name}.strm 文件已存在')
             return False
         try:
             with open(file_path, 'w') as file:
                 file.write(src_url)
-                logger.debug(f'创建 {file_name}.strm 文件成功')
+                logger.debug(f'创建 {clean_file_name}.strm 文件成功')
                 return True
         except Exception as e:
-            logger.error('创建strm源文件失败：' + str(e) + ',{src_url}')
+            logger.error('创建 strm 源文件失败：' + str(e) + ',{src_url}')
             return False
 
     def __task(self, fulladd: bool = False):
@@ -297,7 +320,7 @@ class ANiStrmPro(_PluginBase):
                                         'component': 'VSwitch',
                                         'props': {
                                             'model': 'fulladd',
-                                            'label': '下次创建当前季度所有番剧strm',
+                                            'label': '下次创建当前季度所有番剧 strm',
                                         }
                                     }
                                 ]
@@ -351,8 +374,25 @@ class ANiStrmPro(_PluginBase):
                                         'component': 'VTextField',
                                         'props': {
                                             'model': 'storageplace',
-                                            'label': 'Strm存储地址',
+                                            'label': 'Strm 存储地址',
                                             'placeholder': '/downloads/strm'
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                'component': 'VCol',
+                                'props': {
+                                    'cols': 12,
+                                    'md': 4
+                                },
+                                'content': [
+                                    {
+                                        'component': 'VTextField',
+                                        'props': {
+                                            'model': 'filename_remove',
+                                            'label': '文件名删除字符串',
+                                            'placeholder': '字符串 1@ 字符串 2@ 字符串 3'
                                         }
                                     }
                                 ]
@@ -376,7 +416,7 @@ class ANiStrmPro(_PluginBase):
                                         'props': {
                                             'model': 'before_year',
                                             'label': '年',
-                                            'placeholder': '最少2020'
+                                            'placeholder': '最少 2020'
                                         }
                                     }
                                 ]
@@ -393,14 +433,14 @@ class ANiStrmPro(_PluginBase):
                                         'props': {
                                             'model': 'before_month',
                                             'label': '月',
-                                            'placeholder': '2020年时最少4'
+                                            'placeholder': '2020 年时最少 4'
                                         }
                                     }
                                 ]
                             }
                         ]
                     },
-                    # 增加一行输入镜像地址 和  镜像xml下载地址
+                    # 增加一行输入镜像地址 和  镜像 xml 下载地址
                     {
                         'component': 'VRow',
                         'v_if': 'use_image',
@@ -433,7 +473,7 @@ class ANiStrmPro(_PluginBase):
                                         'component': 'VTextField',
                                         'props': {
                                             'model': 'image_rss_url',
-                                            'label': '镜像RSS地址',
+                                            'label': '镜像 RSS 地址',
                                             'placeholder': 'https://aniapi.v300.eu.org/ani-download.xml'
                                         }
                                     }
@@ -455,9 +495,9 @@ class ANiStrmPro(_PluginBase):
                                         'props': {
                                             'type': 'info',
                                             'variant': 'tonal',
-                                            'text': '自动从open ANi抓取下载直链生成strm文件，免去人工订阅下载' + '\n' +
-                                                    '配合目录监控使用，strm文件创建在/downloads/strm' + '\n' +
-                                                    '通过目录监控转移到link媒体库文件夹 如/downloads/link/strm  mp会完成刮削',
+                                            'text': '自动从 open ANi 抓取下载直链生成 strm 文件，免去人工订阅下载' + '\n' +
+                                                    '配合目录监控使用，strm 文件创建在/downloads/strm' + '\n' +
+                                                    '通过目录监控转移到link 媒体库文件夹 如/downloads/link/strm mp会完成刮削',
                                             'style': 'white-space: pre-line;'
                                         }
                                     },
@@ -466,7 +506,7 @@ class ANiStrmPro(_PluginBase):
                                         'props': {
                                             'type': 'info',
                                             'variant': 'tonal',
-                                            'text': 'emby容器需要设置代理，docker的环境变量必须要有http_proxy代理变量，大小写敏感，具体见readme.' + '\n' +
+                                            'text': 'emby 容器需要设置代理，docker 的环境变量必须要有 http_proxy 代理变量，大小写敏感，具体见 readme.' + '\n' +
                                                     'https://github.com/honue/MoviePilot-Plugins',
                                             'style': 'white-space: pre-line;'
                                         }
@@ -476,8 +516,18 @@ class ANiStrmPro(_PluginBase):
                                         'props': {
                                             'type': 'info',
                                             'variant': 'tonal',
-                                            'text': '镜像部署教程查看X-yael大佬的博客' + '\n' +
+                                            'text': '镜像部署教程查看 X-yael 大佬的博客' + '\n' +
                                                     'https://blog.x-yael.eu.org/p/ani/',
+                                            'style': 'white-space: pre-line;'
+                                        }
+                                    },
+                                    {
+                                        'component': 'VAlert',
+                                        'props': {
+                                            'type': 'warning',
+                                            'variant': 'tonal',
+                                            'text': '文件名删除字符串：填写需要从文件名中删除的字符串，多个字符串用 @ 分隔\n' +
+                                                    '例如：输入 "ABC@DEF@GHI"，文件名 "test-ABC-DEF.mkv" 将变为 "test--.mkv"',
                                             'style': 'white-space: pre-line;'
                                         }
                                     }
@@ -496,6 +546,7 @@ class ANiStrmPro(_PluginBase):
             "before_year": "",
             "storageplace": '/downloads/strm',
             "cron": "*/20 22,23,0,1 * * *",
+            "filename_remove": ""
         }
 
     def __update_config(self):
@@ -507,7 +558,8 @@ class ANiStrmPro(_PluginBase):
             "storageplace": self._storageplace,
             "use_image": self._use_image,
             "image_url": self._image_url,
-            "image_rss_url": self._image_rss_url
+            "image_rss_url": self._image_rss_url,
+            "filename_remove": self._filename_remove
         })
 
     def get_page(self) -> List[dict]:
