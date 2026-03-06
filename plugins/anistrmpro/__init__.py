@@ -58,7 +58,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.8.1"
+    plugin_version = "2.8.2"
     # 插件作者
     plugin_author = "honue,shanhai2333"
     # 作者主页
@@ -136,7 +136,7 @@ class ANiStrmPro(_PluginBase):
         current_year = 0
         current_month = 0
         logger.info(f'获取指定时间……')
-        if int(self._before_year) in [2025, 2024, 2023, 2022, 2021, 2020]:
+        if int(self._before_year) in [2026, 2025, 2024, 2023, 2022, 2021, 2020]:
             current_year = int(self._before_year)
             current_month = int(self._before_month)
         else:
@@ -158,6 +158,7 @@ class ANiStrmPro(_PluginBase):
             url = f'{self._image_url}/{self.__get_ani_season()}/'
             logger.info(f'{url}')
 
+        logger.info(f"请求链接：")
         rep = RequestUtils(ua=settings.USER_AGENT if settings.USER_AGENT else None,
                            proxies=settings.PROXY if settings.PROXY else None).post(url=url)
         logger.debug(rep.text)
