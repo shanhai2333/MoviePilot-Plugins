@@ -152,7 +152,7 @@ class ANiStrmPro(_PluginBase):
     @retry(Exception, tries=3, logger=logger, ret=[])
     def get_current_season_list(self) -> List:
         if not self._use_image:
-            url = f'https://aniopen.an-i.workers.dev/{self.__get_ani_season()}/'
+            url = f'https://openani.an-i.workers.dev/{self.__get_ani_season()}/'
         else:
             url = f'{self._image_url}/{self.__get_ani_season()}/'
             logger.info(f'{url}')
@@ -185,7 +185,7 @@ class ANiStrmPro(_PluginBase):
             link = DomUtils.tag_value(item, "link", default="")
             rss_info['title'] = title
             if not self._use_image:
-                rss_info['link'] = link.replace("resources.ani.rip", "aniopen.an-i.workers.dev")
+                rss_info['link'] = link.replace("resources.ani.rip", "openani.an-i.workers.dev")
             else:
                 rss_info['link'] = link
             ret_array.append(rss_info)
@@ -212,7 +212,7 @@ class ANiStrmPro(_PluginBase):
     def __touch_strm_file(self, file_name, file_url: str = None) -> bool:
         if not file_url:
             if not self._use_image:
-                src_url = f'https://aniopen.an-i.workers.dev/{self._date}/{file_name}?d=true'
+                src_url = f'https://openani.an-i.workers.dev/{self._date}/{file_name}?d=true'
             else:
                 # 以。拆分 file_name，最后为拓展名，srt 和 vtt 忽略
                 file_name_split = file_name.split('.')
