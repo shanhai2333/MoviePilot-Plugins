@@ -14,6 +14,7 @@ from typing import Any, List, Dict, Tuple, Optional
 from app.log import logger
 import xml.dom.minidom
 from app.utils.dom import DomUtils
+import json
 
 
 def retry(ExceptionToCheck: Any,
@@ -54,7 +55,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.8.3"  # 版本号升级，表示融合了新功能
+    plugin_version = "2.8.4"  # 版本号升级，修复了JSON解析问题
     # 插件作者
     plugin_author = "honue, shanhai2333, fused_by_ai"
     # 作者主页
@@ -171,13 +172,62 @@ class ANiStrmPro(_PluginBase):
         logger.info(f"请求季度列表：{url}")
         rep = RequestUtils(ua=settings.USER_AGENT if settings.USER_AGENT else None,
                            proxies=settings.PROXY if settings.PROXY else None).post(url=url)
-        logger.debug(rep.text)
 
+        # 添加调试日志
+        if rep:
+            logger.debug(f"API响应状态码: {rep.status_code}")
+            logger.debug(f"API响应头: {rep.headers}")
+            logger.debug(f"API响应内容: {rep.text[:500]}...")  # 只记录前500个字符避免日志过长
+        else:
+            logger.error("API请求失败，响应为空")
+            return []
+
+        if not rep or rep.status_code != 200:
+            logger.error(f"API请求失败，状态码: {rep.status_code if rep else 'None'}")
+            return []
+
+        # 尝试解析JSON，如果失败则检查响应内容
         try:
-            files_json = rep.json()['files']
-            return [file['name'] for file in files_json]
+            response_text = rep.text.strip()
+
+            # 检查是否为空响应
+            if not response_text:
+                logger.error("API返回空内容")
+                return []
+
+            # 检查是否是HTML错误页面或其他非JSON内容
+            if response_text.startswith('<!DOCTYPE') or '<html' in response_text.lower():
+                logger.error(f"API返回HTML内容而不是JSON: {response_text[:200]}...")
+                return []
+
+            # 尝试解析JSON
+            data = rep.json()
+
+            # 检查返回的数据结构
+            if not isinstance(data, dict):
+                logger.error(f"API返回的数据类型错误，期望对象，实际得到: {type(data)}")
+                return []
+
+            if 'files' not in data:
+                logger.error(f"API返回的数据中缺少'files'字段: {data.keys() if isinstance(data, dict) else type(data)}")
+                return []
+
+            files_json = data['files']
+
+            if not isinstance(files_json, list):
+                logger.error(f"'files'字段类型错误，期望数组，实际得到: {type(files_json)}")
+                return []
+
+            return [file['name'] for file in files_json if 'name' in file]
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON解析失败: {str(e)}")
+            logger.error(f"响应内容: {response_text[:500]}...")
+            return []
+        except KeyError as e:
+            logger.error(f"访问JSON字段失败: {str(e)}")
+            return []
         except Exception as e:
-            logger.error(f"解析季度列表失败：{str(e)}")
+            logger.error(f"解析季度列表时发生未知错误：{str(e)}")
             return []
 
     @retry(Exception, tries=3, logger=logger, ret=[])
@@ -346,7 +396,7 @@ class ANiStrmPro(_PluginBase):
     def get_command() -> List[Dict[str, Any]]:
         pass
 
-    def get_api(self) -> List[Dict[str, Any]]:
+    def get_api() -> List[Dict[str, Any]]:
         pass
 
     def get_form(self) -> Tuple[List[dict], Dict[str, Any]]:
