@@ -54,7 +54,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.8.6"  # 版本号升级，表示融合了新功能
+    plugin_version = "2.8.7"  # 版本号升级，表示融合了新功能
     # 插件作者
     plugin_author = "honue, shanhai2333, fused_by_ai"
     # 作者主页
@@ -169,13 +169,37 @@ class ANiStrmPro(_PluginBase):
         url = f'{base_url}/{self.__get_ani_season()}/'
 
         logger.info(f"请求季度列表：{url}")
-        rep = RequestUtils(ua=settings.USER_AGENT if settings.USER_AGENT else None,
-                           proxies=settings.PROXY if settings.PROXY else None).post(url=url)
-        logger.debug(rep.text)
+
+        # 1. 定义 Body 内容 (必须是字符串格式)
+        json_body = '{"password":"null"}'
+
+        # 2. 定义 Headers，明确指定 Content-Type 为 application/json
+        # 如果后端比较宽松，也可以不传这个 header，但加上更稳妥
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        # 3. 发送 POST 请求，添加 data 和 headers 参数
+        rep = RequestUtils(
+            ua=settings.USER_AGENT if settings.USER_AGENT else None,
+            proxies=settings.PROXY if settings.PROXY else None,
+            headers=headers  # 传入自定义头
+        ).post(
+            url=url,
+            data=json_body  # 传入 JSON 字符串
+        )
+
+        logger.debug(f"响应内容: {rep.text}")
 
         try:
-            files_json = rep.json()['files']
-            return [file['name'] for file in files_json]
+            # 确保响应成功且包含 files 字段
+            if rep.status_code == 200:
+                resp_json = rep.json()
+                files_json = resp_json.get('files', [])
+                return [file['name'] for file in files_json]
+            else:
+                logger.error(f"请求失败，状态码: {rep.status_code}, 内容: {rep.text}")
+                return []
         except Exception as e:
             logger.error(f"解析季度列表失败：{str(e)}")
             return []
