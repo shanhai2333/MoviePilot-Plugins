@@ -54,7 +54,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.8.7"  # 版本号升级，表示融合了新功能
+    plugin_version = "2.8.8"  # 版本号升级，表示融合了新功能
     # 插件作者
     plugin_author = "honue, shanhai2333, fused_by_ai"
     # 作者主页
@@ -122,6 +122,9 @@ class ANiStrmPro(_PluginBase):
                 # 关闭一次性开关 全量转移
                 self._onlyonce = False
                 self._fulladd = False
+
+            self._before_year = ''
+            self._before_month = ''
 
             self.__update_config()
 
