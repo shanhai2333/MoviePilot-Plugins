@@ -262,32 +262,24 @@ class ANiStrmPro(_PluginBase):
         return file_name
 
     def _is_url_format_valid(self, url: str) -> bool:
-        """检查 URL 格式是否符合要求（.mp4?d=true）"""
-        return url.endswith('.mp4?d=true')
+        """检查 URL 是否已经是标准 mp4 直链格式"""
+        return url.endswith('.mp4')
 
     def _convert_url_format(self, url: str) -> str:
         """
-        将 URL 转换为符合要求的格式 (.mp4?d=true)
-        移植自原版 ANiStrm，增强兼容性
+        将 URL 归一为最新版 ANiStrm 使用的 mp4 直链格式
         """
+        if url.endswith('.mp4'):
+            return url
+        if url.endswith('.mp4?d=true'):
+            return url[:-7]
         if '?d=mp4' in url:
-            # 将 ?d=mp4 替换为 .mp4?d=true
-            return url.replace('?d=mp4', '.mp4?d=true')
-        elif url.endswith('.mp4'):
-            # 如果已经以.mp4结尾，添加?d=true
-            return f'{url}?d=true'
-        elif '.mp4?' in url:
-            # 已经有.mp4且有参数，但不是?d=true，可能是?d=1之类，视情况处理
-            # 这里简单处理，如果包含.mp4?但不以?d=true结尾，尝试替换参数部分
-            # 这种比较少见，暂不处理，直接返回或按需修改
-            pass
+            return url.replace('?d=mp4', '.mp4')
+        if '?d=true' in url and '.mp4?d=true' not in url:
+            return url.replace('?d=true', '')
 
-        # 如果既不是标准格式，也不包含常见变体，为了保险起见，
-        # 如果看起来像直链但没有后缀，尝试追加（针对某些特殊 API 返回）
-        # 但大多数 RSS 链接都是完整的。如果不确定，保持原样可能比改错好。
-        # 不过为了匹配原版逻辑，如果完全不符合，我们假设它可能需要后缀
         if not url.endswith('.mp4') and '?' not in url:
-            return f'{url}.mp4?d=true'
+            return f'{url}.mp4'
 
         return url
 
@@ -307,7 +299,7 @@ class ANiStrmPro(_PluginBase):
             # 注意：file_name 通常包含扩展名，我们需要保留扩展名，但对其整体编码
             encoded_filename = quote(file_name, safe='')
 
-            src_url = f'{base_url}/{self._date}/{encoded_filename}?d=true'
+            src_url = f'{base_url}/{self._date}/{encoded_filename}'
 
             # 调试日志
             logger.debug(f"构建全量 URL: {src_url}")
