@@ -1,6 +1,6 @@
-import os
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from urllib.parse import quote
 
 import pytz
@@ -47,6 +47,7 @@ def retry(ExceptionToCheck: Any,
 
 
 class ANiStrmPro(_PluginBase):
+    FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
     # 插件名称
     plugin_name = "ANiStrmPro"
     # 插件描述
@@ -134,75 +135,108 @@ class ANiStrmPro(_PluginBase):
                 self._scheduler.start()
 
     def __get_ani_season(self, idx_month: int = None) -> str:
-        current_year = 0
-        current_month = 0
+        remote_season = self._get_latest_remote_season()
+        if remote_season:
+            self._date = remote_season
+            logger.info(f'使用远端最新季度：{remote_season}')
+            return remote_season
 
-        # 优先使用配置的指定时间（主要用于镜像回溯）
-        if self._before_year and self._before_month:
-            try:
-                year_val = int(self._before_year)
-                month_val = int(self._before_month)
-                if 2020 <= year_val <= 2030:  # 简单校验
-                    current_year = year_val
-                    current_month = month_val
-                    logger.info(f'使用指定时间：{current_year}年{current_month}月')
-            except ValueError:
-                pass
+        current_date = datetime.now()
+        current_year = current_date.year
+        current_month = idx_month if idx_month else current_date.month
+        season_month = ((current_month - 1) // 3) * 3 + 1
+        self._date = f'{current_year}-{season_month}'
+        logger.info(f"远端季度获取失败，回退使用本地时间：{current_year}年{current_month}月，对应季度 {self._date}")
+        return self._date
 
-        # 如果没有指定或指定无效，使用当前时间
-        if current_year == 0:
-            current_date = datetime.now()
-            current_year = current_date.year
-            current_month = idx_month if idx_month else current_date.month
+    def _get_latest_remote_season(self) -> Optional[str]:
+        base_url = self._image_url if self._use_image else 'https://openani.an-i.workers.dev'
+        payload = self._fetch_folder_payload(f'{base_url}/')
+        return self._extract_latest_season(payload.get('files') or [])
 
-        logger.info(f"获取 {current_year}年{current_month}月 所在季度番剧信息")
+    @staticmethod
+    def _extract_latest_season(files: List[Dict[str, str]]) -> Optional[str]:
+        seasons: List[Tuple[int, int]] = []
+        for file_info in files:
+            name = file_info.get('name') or ''
+            mime_type = file_info.get('mimeType') or ''
+            if mime_type != ANiStrmPro.FOLDER_MIME_TYPE:
+                continue
 
-        for month in range(current_month, 0, -1):
-            if month in [10, 7, 4, 1]:
-                self._date = f'{current_year}-{month}'
-                return f'{current_year}-{month}'
+            parts = name.split('-', 1)
+            if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+                continue
 
-        # 兜底，如果当前月还没到季度初，取上一个季度（逻辑上上面的循环应该能覆盖，但以防万一）
-        # 实际上上面的循环是从 current_month 往下找第一个季度月，逻辑是正确的
-        return f'{current_year}-1'  # 极端情况返回1月
+            seasons.append((int(parts[0]), int(parts[1])))
+
+        if not seasons:
+            return None
+
+        year, month = max(seasons)
+        return f'{year}-{month}'
 
     @retry(Exception, tries=3, logger=logger, ret=[])
-    def get_current_season_list(self) -> List:
-        base_url = self._image_url if self._use_image else 'https://openani.an-i.workers.dev'
-        url = f'{base_url}/{self.__get_ani_season()}/'
-
+    def _fetch_folder_payload(self, url: str) -> Dict[str, Any]:
         logger.info(f"请求季度列表：{url}")
 
-        # 1. 定义 Body 内容 (必须是字符串格式)
-        json_body = '{"password":"null"}'
-
-        # 2. 定义 Headers，明确指定 Content-Type 为 application/json
-        # 如果后端比较宽松，也可以不传这个 header，但加上更稳妥
         headers = {
             "Content-Type": "application/json"
         }
-
-        # 3. 发送 POST 请求，添加 data 和 headers 参数
         rep = RequestUtils(
             ua=settings.USER_AGENT if settings.USER_AGENT else None,
             proxies=settings.PROXY if settings.PROXY else None,
-            headers=headers  # 传入自定义头
+            headers=headers
         ).post(
             url=url,
-            data=json_body  # 传入 JSON 字符串
+            data='{"password":"null"}'
         )
+
+        if not rep:
+            raise ValueError(f"目录请求失败：{url}")
 
         logger.debug(f"响应内容: {rep.text}")
 
         try:
-            # 确保响应成功且包含 files 字段
-            if rep.status_code == 200:
-                resp_json = rep.json()
-                files_json = resp_json.get('files', [])
-                return [file['name'] for file in files_json]
-            else:
-                logger.error(f"请求失败，状态码: {rep.status_code}, 内容: {rep.text}")
-                return []
+            if rep.status_code != 200:
+                raise ValueError(f"请求失败，状态码: {rep.status_code}, 内容: {rep.text}")
+            return rep.json()
+        finally:
+            rep.close()
+
+    def _collect_season_entries(self, folder_path: str, relative_dir: str = "") -> List[Dict[str, str]]:
+        base_url = self._image_url if self._use_image else 'https://openani.an-i.workers.dev'
+        payload = self._fetch_folder_payload(f'{base_url}/{folder_path}')
+        entries: List[Dict[str, str]] = []
+
+        for file_info in payload.get('files', []):
+            name = file_info.get('name') or ''
+            if not name:
+                continue
+
+            mime_type = file_info.get('mimeType') or ''
+            if mime_type == self.FOLDER_MIME_TYPE:
+                child_relative_dir = f'{relative_dir}/{name}'.strip('/')
+                child_folder_path = f"{folder_path.rstrip('/')}/{quote(name, safe='')}/"
+                entries.extend(self._collect_season_entries(child_folder_path, child_relative_dir))
+                continue
+
+            encoded_name = quote(name, safe='')
+            file_url = f"{base_url}/{folder_path.rstrip('/')}/{encoded_name}"
+            entries.append({
+                'name': name,
+                'url': file_url,
+                'relative_dir': relative_dir,
+            })
+
+        return entries
+
+    def get_current_season_list(self) -> List:
+        base_url = self._image_url if self._use_image else 'https://openani.an-i.workers.dev'
+        season = self.__get_ani_season()
+        logger.info(f"获取季度文件列表：{base_url}/{season}/")
+
+        try:
+            return self._collect_season_entries(f'{season}/')
         except Exception as e:
             logger.error(f"解析季度列表失败：{str(e)}")
             return []
@@ -283,7 +317,7 @@ class ANiStrmPro(_PluginBase):
 
         return url
 
-    def __touch_strm_file(self, file_name, file_url: str = None) -> bool:
+    def __touch_strm_file(self, file_name, file_url: str = None, relative_dir: str = None) -> bool:
         src_url = ""
 
         # 过滤字幕文件 (srt, vtt, ass 等)
@@ -305,36 +339,38 @@ class ANiStrmPro(_PluginBase):
             logger.debug(f"构建全量 URL: {src_url}")
         else:
             # === 增量模式 (RSS 链接) ===
-            # RSS 返回的链接通常已经是编码过的，或者由 API 保证合法性
-            # 但我们依然应用格式转换逻辑 (.mp4?d=true)
-            if self._is_url_format_valid(file_url):
+            if self._use_image:
+                # 镜像模式下直接使用 RSS/XML 中的 link，避免改写后请求失败
                 src_url = file_url
             else:
-                # 转换格式前，理论上不需要再次编码，因为 link 来自 XML 通常是完整的
-                # 但如果 link 中包含未编码的空格，_convert_url_format 可能会处理不当
-                # 这里保持原样，信任 RSS 源提供的链接完整性，只做后缀修正
-                src_url = self._convert_url_format(file_url)
-                if src_url != file_url:
-                    logger.debug(f"URL 格式已修正：{file_url} -> {src_url}")
+                # 非镜像模式沿用标准化逻辑，统一成兼容的 mp4 直链格式
+                if self._is_url_format_valid(file_url):
+                    src_url = file_url
+                else:
+                    src_url = self._convert_url_format(file_url)
+                    if src_url != file_url:
+                        logger.debug(f"URL 格式已修正：{file_url} -> {src_url}")
 
         # 处理文件名（用于本地 .strm 文件的命名）
         # 注意：本地文件名不需要 URL 编码，但需要清洗用户配置的字符串
         clean_file_name = self.__remove_strings(file_name)
 
-        file_path = f'{self._storageplace}/{clean_file_name}.strm'
+        directory = Path(self._storageplace)
+        if relative_dir:
+            directory = directory / relative_dir
+        file_path = directory / f'{clean_file_name}.strm'
 
-        if os.path.exists(file_path):
-            logger.debug(f'strm 文件已存在：{clean_file_name}.strm')
+        if file_path.exists():
+            logger.debug(f'strm 文件已存在：{file_path.name}')
             return False
 
         try:
-            with open(file_path, 'w', encoding='utf-8') as file:
-                file.write(src_url)
-                logger.debug(f'创建 strm 文件成功：{clean_file_name}.strm -> {src_url[:50]}...')
-                return True
+            directory.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(src_url, encoding='utf-8')
+            logger.debug(f'创建 strm 文件成功：{file_path.name} -> {src_url[:50]}...')
+            return True
         except Exception as e:
-            # 修复 logger 格式化
-            logger.error(f'创建 strm 源文件失败：{str(e)}, 链接：{src_url}')
+            logger.error(f'创建 strm 源文件失败：{file_path.name} - {str(e)}, 链接：{src_url}')
             return False
 
     def __task(self, fulladd: bool = False):
@@ -350,10 +386,12 @@ class ANiStrmPro(_PluginBase):
                         cnt += 1
         else:
             # 全量模式
-            name_list = self.get_current_season_list()
-            logger.info(f'本次处理全量列表 {len(name_list)} 个文件')
-            for file_name in name_list:
-                if self.__touch_strm_file(file_name=file_name):
+            file_entries = self.get_current_season_list()
+            logger.info(f'本次处理全量列表 {len(file_entries)} 个文件')
+            for file_entry in file_entries:
+                if self.__touch_strm_file(file_name=file_entry['name'],
+                                          file_url=file_entry.get('url'),
+                                          relative_dir=file_entry.get('relative_dir')):
                     cnt += 1
 
         logger.info(f'任务完成，新创建了 {cnt} 个 strm 文件')
