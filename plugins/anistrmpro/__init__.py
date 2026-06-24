@@ -55,7 +55,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.8.111"  # 版本号升级，表示融合了新功能
+    plugin_version = "2.9.1"  # 版本号升级，表示融合了新功能
     # 插件作者
     plugin_author = "honue, shanhai2333, fused_by_ai"
     # 作者主页
@@ -78,6 +78,7 @@ class ANiStrmPro(_PluginBase):
     _selected_seasons: List[str] = []
     _storageplace = None
     _filename_remove = ''
+    _filename_blacklist = ''
     _date = None  # 存储当前处理的日期字符串
 
     # 定时器
@@ -113,6 +114,7 @@ class ANiStrmPro(_PluginBase):
                 self._selected_seasons = ["latest"]
             self._storageplace = config.get("storageplace")
             self._filename_remove = config.get("filename_remove")
+            self._filename_blacklist = config.get("filename_blacklist")
 
         if self._enabled or self._onlyonce:
             # 定时服务
@@ -348,6 +350,17 @@ class ANiStrmPro(_PluginBase):
         """检查 URL 是否已经是标准 mp4 直链格式"""
         return url.endswith('.mp4')
 
+    def _is_blacklisted(self, file_name: str) -> bool:
+        if not self._filename_blacklist:
+            return False
+
+        blacklist = [item.strip() for item in self._filename_blacklist.split('@') if item.strip()]
+        for keyword in blacklist:
+            if keyword in file_name:
+                logger.info(f'文件命中黑名单，跳过生成：{file_name}，关键词：{keyword}')
+                return True
+        return False
+
     def _convert_url_format(self, url: str) -> str:
         """
         将 URL 归一为最新版 ANiStrm 使用的 mp4 直链格式
@@ -371,6 +384,8 @@ class ANiStrmPro(_PluginBase):
 
         # 过滤字幕文件 (srt, vtt, ass 等)
         if file_name.lower().endswith(('.srt', '.vtt', '.ass', '.ssa')):
+            return False
+        if self._is_blacklisted(file_name):
             return False
 
         if not file_url:
@@ -522,6 +537,13 @@ class ANiStrmPro(_PluginBase):
                                 'content': [{'component': 'VTextField',
                                              'props': {'model': 'filename_remove', 'label': '文件名删除字符串 (@分隔)',
                                                        'placeholder': 'ABC@DEF'}}]
+                            },
+                            {
+                                'component': 'VCol',
+                                'props': {'cols': 12, 'md': 4},
+                                'content': [{'component': 'VTextField',
+                                             'props': {'model': 'filename_blacklist', 'label': '文件名黑名单 (@分隔)',
+                                                       'placeholder': '预告@PV@NCOP'}}]
                             }
                         ]
                     },
@@ -565,7 +587,7 @@ class ANiStrmPro(_PluginBase):
                                         'props': {
                                             'type': 'warning',
                                             'variant': 'tonal',
-                                            'text': '注意：\n- Emby/Jellyfin 容器需配置 http_proxy 环境变量。\n- 文件名删除字符串用 @ 分隔，例如："ANSUB@NC-Raw"',
+                                            'text': '注意：\n- Emby/Jellyfin 容器需配置 http_proxy 环境变量。\n- 文件名删除字符串和黑名单都用 @ 分隔，例如："ANSUB@NC-Raw"、"预告@PV"',
                                             'style': 'white-space: pre-line;'
                                         }
                                     }
@@ -583,6 +605,7 @@ class ANiStrmPro(_PluginBase):
             "selected_seasons": ["latest"],
             "cron": "*/20 22,23,0,1 * * *",
             "filename_remove": "",
+            "filename_blacklist": "",
             "image_url": "",
             "image_rss_url": ""
         }
@@ -607,6 +630,7 @@ class ANiStrmPro(_PluginBase):
             "image_url": self._image_url,
             "image_rss_url": self._image_rss_url,
             "filename_remove": self._filename_remove,
+            "filename_blacklist": self._filename_blacklist,
         })
 
     def get_page(self) -> List[dict]:
