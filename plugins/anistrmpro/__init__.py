@@ -55,7 +55,7 @@ class ANiStrmPro(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/anistrmpro.png"
     # 插件版本
-    plugin_version = "2.8.10"  # 版本号升级，表示融合了新功能
+    plugin_version = "2.8.111"  # 版本号升级，表示融合了新功能
     # 插件作者
     plugin_author = "honue, shanhai2333, fused_by_ai"
     # 作者主页
@@ -69,15 +69,13 @@ class ANiStrmPro(_PluginBase):
 
     # 页面配置属性
     _enabled = False
-    _use_image = False
     _image_url = ''
     _image_rss_url = ''
     # 任务执行间隔
     _cron = None
     _onlyonce = False
     _fulladd = False
-    _before_month = ''
-    _before_year = ''
+    _selected_seasons: List[str] = []
     _storageplace = None
     _filename_remove = ''
     _date = None  # 存储当前处理的日期字符串
@@ -85,20 +83,34 @@ class ANiStrmPro(_PluginBase):
     # 定时器
     _scheduler: Optional[BackgroundScheduler] = None
 
+    def _get_base_url(self) -> str:
+        if self._image_url and self._image_url.strip():
+            return self._image_url.strip().rstrip('/')
+        return 'https://openani.an-i.workers.dev'
+
+    def _get_rss_url(self) -> str:
+        if self._image_rss_url and self._image_rss_url.strip():
+            return self._image_rss_url.strip()
+        return 'https://api.ani.rip/ani-download.xml'
+
+    def _is_mirror_mode(self) -> bool:
+        return bool(self._image_url and self._image_url.strip())
+
     def init_plugin(self, config: dict = None):
         # 停止现有任务
         self.stop_service()
 
         if config:
             self._enabled = config.get("enabled")
-            self._use_image = config.get("use_image")
             self._image_url = config.get("image_url")
             self._image_rss_url = config.get("image_rss_url")
             self._cron = config.get("cron")
             self._onlyonce = config.get("onlyonce")
             self._fulladd = config.get("fulladd")
-            self._before_month = config.get("before_month")
-            self._before_year = config.get("before_year")
+            if "selected_seasons" in config:
+                self._selected_seasons = config.get("selected_seasons") or []
+            else:
+                self._selected_seasons = ["latest"]
             self._storageplace = config.get("storageplace")
             self._filename_remove = config.get("filename_remove")
 
@@ -124,9 +136,6 @@ class ANiStrmPro(_PluginBase):
                 self._onlyonce = False
                 self._fulladd = False
 
-            self._before_year = ''
-            self._before_month = ''
-
             self.__update_config()
 
             # 启动任务
@@ -141,6 +150,9 @@ class ANiStrmPro(_PluginBase):
             logger.info(f'使用远端最新季度：{remote_season}')
             return remote_season
 
+        return self._get_local_season(idx_month=idx_month)
+
+    def _get_local_season(self, idx_month: int = None) -> str:
         current_date = datetime.now()
         current_year = current_date.year
         current_month = idx_month if idx_month else current_date.month
@@ -150,9 +162,21 @@ class ANiStrmPro(_PluginBase):
         return self._date
 
     def _get_latest_remote_season(self) -> Optional[str]:
-        base_url = self._image_url if self._use_image else 'https://openani.an-i.workers.dev'
-        payload = self._fetch_folder_payload(f'{base_url}/')
+        payload = self._fetch_folder_payload(f'{self._get_base_url()}/')
         return self._extract_latest_season(payload.get('files') or [])
+
+    def _get_target_seasons(self) -> List[str]:
+        if self._selected_seasons:
+            seasons: List[str] = []
+            for season in self._selected_seasons:
+                if season == "latest":
+                    latest = self.__get_ani_season()
+                    if latest:
+                        seasons.append(latest)
+                else:
+                    seasons.append(season)
+            return list(dict.fromkeys(seasons))
+        return []
 
     @staticmethod
     def _extract_latest_season(files: List[Dict[str, str]]) -> Optional[str]:
@@ -204,7 +228,7 @@ class ANiStrmPro(_PluginBase):
             rep.close()
 
     def _collect_season_entries(self, folder_path: str, relative_dir: str = "") -> List[Dict[str, str]]:
-        base_url = self._image_url if self._use_image else 'https://openani.an-i.workers.dev'
+        base_url = self._get_base_url()
         payload = self._fetch_folder_payload(f'{base_url}/{folder_path}')
         entries: List[Dict[str, str]] = []
 
@@ -231,7 +255,7 @@ class ANiStrmPro(_PluginBase):
         return entries
 
     def get_current_season_list(self) -> List:
-        base_url = self._image_url if self._use_image else 'https://openani.an-i.workers.dev'
+        base_url = self._get_base_url()
         season = self.__get_ani_season()
         logger.info(f"获取季度文件列表：{base_url}/{season}/")
 
@@ -241,9 +265,34 @@ class ANiStrmPro(_PluginBase):
             logger.error(f"解析季度列表失败：{str(e)}")
             return []
 
+    def get_season_entries(self, season: str) -> List[Dict[str, str]]:
+        base_url = self._get_base_url()
+        logger.info(f"获取季度文件列表：{base_url}/{season}/")
+
+        try:
+            return self._collect_season_entries(f'{season}/')
+        except Exception as e:
+            logger.error(f"解析季度列表失败：{str(e)}")
+            return []
+
+    def get_available_seasons(self, use_cache: bool = True) -> List[str]:
+        payload = self._fetch_folder_payload(f'{self._get_base_url()}/')
+        seasons = []
+        for file_info in payload.get('files') or []:
+            name = file_info.get('name') or ''
+            mime_type = file_info.get('mimeType') or ''
+            if mime_type != self.FOLDER_MIME_TYPE:
+                continue
+            parts = name.split('-', 1)
+            if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+                continue
+            seasons.append(name)
+        seasons.sort(key=lambda item: tuple(map(int, item.split('-'))), reverse=True)
+        return seasons
+
     @retry(Exception, tries=3, logger=logger, ret=[])
     def get_latest_list(self) -> List:
-        addr = self._image_rss_url if self._use_image else 'https://api.ani.rip/ani-download.xml'
+        addr = self._get_rss_url()
 
         logger.info(f"请求 RSS 列表：{addr}")
         ret = RequestUtils(ua=settings.USER_AGENT if settings.USER_AGENT else None,
@@ -270,7 +319,7 @@ class ANiStrmPro(_PluginBase):
                 rss_info['title'] = title
 
                 # 如果不是镜像模式，替换域名
-                if not self._use_image:
+                if not self._is_mirror_mode():
                     link = link.replace("resources.ani.rip", "openani.an-i.workers.dev")
 
                 rss_info['link'] = link
@@ -326,7 +375,7 @@ class ANiStrmPro(_PluginBase):
 
         if not file_url:
             # === 全量模式 (手动构建 URL) ===
-            base_url = self._image_url if self._use_image else 'https://openani.an-i.workers.dev'
+            base_url = self._get_base_url()
 
             # 【关键修复】：对文件名进行 URL 编码，防止特殊字符导致链接失效
             # 原版逻辑：quote(file_name, safe='')
@@ -339,7 +388,7 @@ class ANiStrmPro(_PluginBase):
             logger.debug(f"构建全量 URL: {src_url}")
         else:
             # === 增量模式 (RSS 链接) ===
-            if self._use_image:
+            if self._is_mirror_mode():
                 # 镜像模式下直接使用 RSS/XML 中的 link，避免改写后请求失败
                 src_url = file_url
             else:
@@ -386,13 +435,19 @@ class ANiStrmPro(_PluginBase):
                         cnt += 1
         else:
             # 全量模式
-            file_entries = self.get_current_season_list()
-            logger.info(f'本次处理全量列表 {len(file_entries)} 个文件')
-            for file_entry in file_entries:
-                if self.__touch_strm_file(file_name=file_entry['name'],
-                                          file_url=file_entry.get('url'),
-                                          relative_dir=file_entry.get('relative_dir')):
-                    cnt += 1
+            seasons = self._get_target_seasons()
+            if not seasons:
+                logger.info('未选择任何季度，全量任务结束')
+                return
+
+            for season in seasons:
+                file_entries = self.get_season_entries(season)
+                logger.info(f'本次处理季度 {season} 全量列表 {len(file_entries)} 个文件')
+                for file_entry in file_entries:
+                    if self.__touch_strm_file(file_name=file_entry['name'],
+                                              file_url=file_entry.get('url'),
+                                              relative_dir=file_entry.get('relative_dir')):
+                        cnt += 1
 
         logger.info(f'任务完成，新创建了 {cnt} 个 strm 文件')
 
@@ -407,6 +462,7 @@ class ANiStrmPro(_PluginBase):
         pass
 
     def get_form(self) -> Tuple[List[dict], Dict[str, Any]]:
+        season_options = self.__build_season_options()
         return [
             {
                 'component': 'VForm',
@@ -430,13 +486,7 @@ class ANiStrmPro(_PluginBase):
                                 'component': 'VCol',
                                 'props': {'cols': 12, 'md': 4},
                                 'content': [
-                                    {'component': 'VSwitch', 'props': {'model': 'fulladd', 'label': '下次全量创建'}}]
-                            },
-                            {
-                                'component': 'VCol',
-                                'props': {'cols': 12, 'md': 4},
-                                'content': [
-                                    {'component': 'VSwitch', 'props': {'model': 'use_image', 'label': '使用镜像'}}]
+                                    {'component': 'VSwitch', 'props': {'model': 'fulladd', 'label': '按所选季度补库'}}]
                             }
                         ]
                     },
@@ -451,7 +501,17 @@ class ANiStrmPro(_PluginBase):
                             },
                             {
                                 'component': 'VCol',
-                                'props': {'cols': 12, 'md': 4},
+                                'props': {'cols': 12, 'md': 6},
+                                'content': [{'component': 'VSelect',
+                                             'props': {'model': 'selected_seasons', 'label': '拉取季度',
+                                                       'items': season_options, 'multiple': True, 'chips': True,
+                                                       'clearable': True,
+                                                       'hint': '开启“按所选季度补库”后，按这里选择的季度检查并补齐 strm；已存在文件会自动跳过',
+                                                       'persistent-hint': True}}]
+                            },
+                            {
+                                'component': 'VCol',
+                                'props': {'cols': 12, 'md': 6},
                                 'content': [{'component': 'VTextField',
                                              'props': {'model': 'storageplace', 'label': 'Strm 存储地址',
                                                        'placeholder': '/downloads/strm'}}]
@@ -467,27 +527,6 @@ class ANiStrmPro(_PluginBase):
                     },
                     {
                         'component': 'VRow',
-                        'v_if': 'use_image',
-                        'content': [
-                            {
-                                'component': 'VCol',
-                                'props': {'cols': 12, 'md': 6},
-                                'content': [{'component': 'VTextField',
-                                             'props': {'model': 'before_year', 'label': '指定年份',
-                                                       'placeholder': '2024'}}]
-                            },
-                            {
-                                'component': 'VCol',
-                                'props': {'cols': 12, 'md': 6},
-                                'content': [{'component': 'VTextField',
-                                             'props': {'model': 'before_month', 'label': '指定月份',
-                                                       'placeholder': '4'}}]
-                            }
-                        ]
-                    },
-                    {
-                        'component': 'VRow',
-                        'v_if': 'use_image',
                         'content': [
                             {
                                 'component': 'VCol',
@@ -517,7 +556,7 @@ class ANiStrmPro(_PluginBase):
                                         'props': {
                                             'type': 'info',
                                             'variant': 'tonal',
-                                            'text': '功能说明：\n1. 自动从 ANi 抓取直链生成 strm 文件。\n2. 支持镜像配置，解决访问问题。\n3. 支持文件名清洗（删除特定字符串）。\n4. 增强版：自动修正 RSS 链接格式，确保播放器兼容性。',
+                                            'text': '功能说明：\n1. 自动从 ANi 抓取直链生成 strm 文件。\n2. 支持镜像配置，镜像地址留空则使用默认官方地址。\n3. 支持文件名清洗（删除特定字符串）。\n4. 支持按所选季度递归补库，自动保留子目录结构。',
                                             'style': 'white-space: pre-line;'
                                         }
                                     },
@@ -540,15 +579,22 @@ class ANiStrmPro(_PluginBase):
             "enabled": False,
             "onlyonce": False,
             "fulladd": False,
-            "use_image": False,
-            "before_month": "",
-            "before_year": "",
             "storageplace": '/downloads/strm',
+            "selected_seasons": ["latest"],
             "cron": "*/20 22,23,0,1 * * *",
             "filename_remove": "",
             "image_url": "",
             "image_rss_url": ""
         }
+
+    def __build_season_options(self) -> List[Dict[str, str]]:
+        try:
+            seasons = self.get_available_seasons() or [self._get_local_season()]
+        except Exception:
+            seasons = [self._get_local_season()]
+        return [{"title": "最新季", "value": "latest"}] + [
+            {"title": season, "value": season} for season in seasons
+        ]
 
     def __update_config(self):
         self.update_config({
@@ -557,12 +603,10 @@ class ANiStrmPro(_PluginBase):
             "enabled": self._enabled,
             "fulladd": self._fulladd,
             "storageplace": self._storageplace,
-            "use_image": self._use_image,
+            "selected_seasons": self._selected_seasons,
             "image_url": self._image_url,
             "image_rss_url": self._image_rss_url,
             "filename_remove": self._filename_remove,
-            "before_month": self._before_month,
-            "before_year": self._before_year
         })
 
     def get_page(self) -> List[dict]:
@@ -585,7 +629,6 @@ if __name__ == "__main__":
     # 模拟配置
     pro.init_plugin({
         "enabled": True,
-        "use_image": False,
         "storageplace": "/tmp/strm_test"
     })
     # 测试 URL 转换逻辑
