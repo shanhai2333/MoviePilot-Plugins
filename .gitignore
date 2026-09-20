@@ -1,3 +1,6 @@
 /.vscode/
 /anistrm/
 /.idea/
+/.workbuddy-ai/
+__pycache__/
+*.py[cod]
