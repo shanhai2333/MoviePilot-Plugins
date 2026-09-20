@@ -17,9 +17,9 @@ class QbSpeedSwitch(_PluginBase):
     plugin_name = "QB速度调度"
     # 插件描述
     plugin_desc = (
-        "按下载状态自动切换 qBittorrent 上传/下载限速：无下载时固定限速（防 PCDN 判定），"
-        "有下载时解除限速让下载跑满；下载中实测上传速度超过阈值时压制上传限速（只压不自动恢复，"
-        "下载完成后自动恢复无下载时的固定限速）。"
+        "只控制 qBittorrent 上传限速：无下载时固定限速（防 PCDN 判定），"
+        "有下载时解除限速让下载跑满；下载中实测上传速度超过阈值时压制上传限速"
+        "（只压不自动恢复，下载完成后自动恢复无下载时的固定限速）。下载限速不受本插件影响。"
     )
     # 插件图标
     plugin_icon = "Qbittorrent_A.png"
@@ -53,12 +53,10 @@ class QbSpeedSwitch(_PluginBase):
     _downloaders: List[str] = []
     # 检测间隔（秒）
     _interval: int = 30
-    # 有下载时（downloading）
+    # 有下载时（downloading）的上传限速
     _downloading_upload_limit: int = 0
-    _downloading_download_limit: int = 0
-    # 无下载时（idle）
+    # 无下载时（idle）的上传限速
     _idle_upload_limit: int = 200
-    _idle_download_limit: int = 0
     # 上传超速压制
     _threshold_enabled: bool = False
     _upload_threshold: int = 0
@@ -86,10 +84,7 @@ class QbSpeedSwitch(_PluginBase):
 
             self._downloading_upload_limit = max(
                 self.__to_int(config.get("downloading_upload_limit"), 0), 0)
-            self._downloading_download_limit = max(
-                self.__to_int(config.get("downloading_download_limit"), 0), 0)
             self._idle_upload_limit = max(self.__to_int(config.get("idle_upload_limit"), 200), 0)
-            self._idle_download_limit = max(self.__to_int(config.get("idle_download_limit"), 0), 0)
 
             self._threshold_enabled = bool(config.get("threshold_enabled"))
             self._upload_threshold = max(self.__to_int(config.get("upload_threshold"), 0), 0)
@@ -104,8 +99,8 @@ class QbSpeedSwitch(_PluginBase):
         logger.info(
             f"{self.LOG_TAG}配置加载：enabled={self._enabled}, notify={self._notify}, "
             f"下载器={self._downloaders or '未选择'}, 间隔={self._interval}s, "
-            f"无下载时[下载{self._idle_download_limit}/上传{self._idle_upload_limit}]KB/s, "
-            f"有下载时[下载{self._downloading_download_limit}/上传{self._downloading_upload_limit}]KB/s, "
+            f"无下载时上传{self._idle_upload_limit}KB/s, "
+            f"有下载时上传{self._downloading_upload_limit}KB/s, "
             f"超速压制={self._threshold_enabled}"
             f"(阈值{self._upload_threshold}→{self._threshold_upload_limit})KB/s"
         )
@@ -289,8 +284,9 @@ class QbSpeedSwitch(_PluginBase):
                                             "type": "info",
                                             "variant": "tonal",
                                             "text": (
-                                                "① 无下载时（平时）—— 固定限速。"
-                                                "没有任何下载任务时用这组值，把上传压住，避免上传过多被运营商判定为 PCDN。"
+                                                "本插件只管理「上传限速」，不会改动你在 qBittorrent 里设置的下载限速。"
+                                                "① 无下载时（平时）—— 固定上传限速。"
+                                                "没有任何下载任务时用这个值把上传压住，避免上传过多被运营商判定为 PCDN。"
                                             ),
                                         },
                                     }
@@ -316,21 +312,6 @@ class QbSpeedSwitch(_PluginBase):
                                     }
                                 ],
                             },
-                            {
-                                "component": "VCol",
-                                "props": {"cols": 12, "md": 6},
-                                "content": [
-                                    {
-                                        "component": "VTextField",
-                                        "props": {
-                                            "model": "idle_download_limit",
-                                            "label": "下载限速（KB/s）",
-                                            "hint": "无下载任务时基本用不到，一般留 0",
-                                            "persistent-hint": True,
-                                        },
-                                    }
-                                ],
-                            },
                         ],
                     },
                     {
@@ -346,8 +327,8 @@ class QbSpeedSwitch(_PluginBase):
                                             "type": "info",
                                             "variant": "tonal",
                                             "text": (
-                                                "② 有下载时 —— 解除限速让下载跑满。"
-                                                "只要存在下载中任务（含卡种）就用这组值，上传限速填 0 即不限速；"
+                                                "② 有下载时 —— 解除上传限速让下载跑满。"
+                                                "只要存在下载中任务（含卡种）就用这个值，填 0 即不限速；"
                                                 "上传若飙起来，由下面的「上传超速压制」接管。"
                                             ),
                                         },
@@ -369,21 +350,6 @@ class QbSpeedSwitch(_PluginBase):
                                             "model": "downloading_upload_limit",
                                             "label": "上传限速（KB/s）",
                                             "hint": "填 0 = 不限速，让下载尽快完成",
-                                            "persistent-hint": True,
-                                        },
-                                    }
-                                ],
-                            },
-                            {
-                                "component": "VCol",
-                                "props": {"cols": 12, "md": 6},
-                                "content": [
-                                    {
-                                        "component": "VTextField",
-                                        "props": {
-                                            "model": "downloading_download_limit",
-                                            "label": "下载限速（KB/s）",
-                                            "hint": "一般留 0（不限速）",
                                             "persistent-hint": True,
                                         },
                                     }
@@ -497,9 +463,7 @@ class QbSpeedSwitch(_PluginBase):
             "downloaders": [],
             "interval": 30,
             "idle_upload_limit": 200,
-            "idle_download_limit": 0,
             "downloading_upload_limit": 0,
-            "downloading_download_limit": 0,
             "threshold_enabled": False,
             "upload_threshold": 0,
             "threshold_upload_limit": 500,
@@ -531,7 +495,6 @@ class QbSpeedSwitch(_PluginBase):
                         {"component": "td", "text": name},
                         {"component": "td", "text": self.__scene_label(item.get("scene"))},
                         {"component": "td", "text": "是" if item.get("throttled") else "否"},
-                        {"component": "td", "text": self.__fmt_limit(item.get("dl"))},
                         {"component": "td", "text": self.__fmt_limit(item.get("ul"))},
                         {"component": "td", "text": str(item.get("downloading", 0))},
                         {"component": "td", "text": item.get("updated_at") or "-"},
@@ -553,7 +516,6 @@ class QbSpeedSwitch(_PluginBase):
                                     {"component": "th", "text": "下载器"},
                                     {"component": "th", "text": "当前场景"},
                                     {"component": "th", "text": "已压制"},
-                                    {"component": "th", "text": "下载限速"},
                                     {"component": "th", "text": "上传限速"},
                                     {"component": "th", "text": "下载中任务"},
                                     {"component": "th", "text": "更新时间"},
@@ -622,13 +584,12 @@ class QbSpeedSwitch(_PluginBase):
         if scene_changed:
             state = {"scene": scene, "throttled": False}
 
-        # 3) 取当前场景的目标档位
+        # 3) 取当前场景的目标上传限速（本插件不管理下载限速）
         if scene == self.SCENE_DOWNLOADING:
-            target_dl, target_ul = self._downloading_download_limit, self._downloading_upload_limit
+            target_ul = self._downloading_upload_limit
         else:
-            target_dl, target_ul = self._idle_download_limit, self._idle_upload_limit
+            target_ul = self._idle_upload_limit
 
-        # 4) 动态限流：只压不自动恢复
         # 4) 动态限流：只压不自动恢复
         # 档位基准值（未压制时该场景应有的上传限速）
         scene_ul = target_ul
@@ -665,16 +626,18 @@ class QbSpeedSwitch(_PluginBase):
         if throttled:
             target_ul = self._threshold_upload_limit
 
-        # 5) 与实际值比对，有差异才下发
+        # 5) 读当前限速并比对。只关心上传 —— 下载限速原样保留，不覆盖用户在 qB 里的设置
         current_dl, current_ul = self.__current_limits(qb)
-        need_apply = current_dl is None or current_dl != target_dl or current_ul != target_ul
 
-        if need_apply:
-            if qb.set_speed_limit(download_limit=target_dl, upload_limit=target_ul):
+        if current_ul is None:
+            logger.warning(f"{self.LOG_TAG}[{name}] 读取当前限速失败，跳过本轮下发")
+        elif current_ul != target_ul:
+            if qb.set_speed_limit(download_limit=current_dl, upload_limit=target_ul):
                 logger.info(
                     f"{self.LOG_TAG}[{name}] 场景={self.__scene_label(scene)}"
                     f"{'（已压制）' if throttled else ''}，"
-                    f"下发限速：下载 {self.__fmt_limit(target_dl)} / 上传 {self.__fmt_limit(target_ul)}"
+                    f"下发上传限速：{self.__fmt_limit(target_ul)}"
+                    f"（下载限速保持 {self.__fmt_limit(current_dl)} 不变）"
                 )
                 if self._notify:
                     self.__notify_change(
@@ -683,7 +646,6 @@ class QbSpeedSwitch(_PluginBase):
                         scene_changed=scene_changed,
                         just_throttled=throttled and not was_throttled,
                         throttled=throttled,
-                        download_limit=target_dl,
                         upload_limit=target_ul,
                     )
             else:
@@ -695,14 +657,13 @@ class QbSpeedSwitch(_PluginBase):
                         text=f"下载器 [{name}] 下发限速失败，请检查 qBittorrent 连接。",
                     )
         else:
-            logger.debug(f"{self.LOG_TAG}[{name}] 限速值无需变更")
+            logger.debug(f"{self.LOG_TAG}[{name}] 上传限速无需变更")
 
         # 6) 记录状态
         state.update(
             {
                 "scene": scene,
                 "throttled": throttled,
-                "dl": target_dl,
                 "ul": target_ul,
                 "downloading": len(torrents),
                 "updated_at": datetime.now(pytz.timezone(settings.TZ)).strftime("%Y-%m-%d %H:%M:%S"),
@@ -791,7 +752,7 @@ class QbSpeedSwitch(_PluginBase):
             return None, None
 
     def __notify_change(self, name: str, scene: str, scene_changed: bool, just_throttled: bool,
-                        throttled: bool, download_limit: int, upload_limit: int):
+                        throttled: bool, upload_limit: int):
         """
         限速值变化通知
         """
@@ -807,7 +768,6 @@ class QbSpeedSwitch(_PluginBase):
         text = (
             f"下载器：{name}\n"
             f"场景：{self.__scene_label(scene)}\n"
-            f"下载限速：{self.__fmt_limit(download_limit)}\n"
             f"上传限速：{self.__fmt_limit(upload_limit)}"
         )
         if throttled:
@@ -832,7 +792,7 @@ class QbSpeedSwitch(_PluginBase):
             lines.append(
                 f"{name}：{self.__scene_label(item.get('scene'))}"
                 f"{'（已压制）' if item.get('throttled') else ''}，"
-                f"下载 {self.__fmt_limit(item.get('dl'))} / 上传 {self.__fmt_limit(item.get('ul'))}，"
+                f"上传限速 {self.__fmt_limit(item.get('ul'))}，"
                 f"下载中 {item.get('downloading', 0)} 个"
             )
 
@@ -852,9 +812,7 @@ class QbSpeedSwitch(_PluginBase):
             "onlyonce": False,
             "downloaders": self._downloaders,
             "interval": self._interval,
-            "downloading_download_limit": self._downloading_download_limit,
             "downloading_upload_limit": self._downloading_upload_limit,
-            "idle_download_limit": self._idle_download_limit,
             "idle_upload_limit": self._idle_upload_limit,
             "threshold_enabled": self._threshold_enabled,
             "upload_threshold": self._upload_threshold,
