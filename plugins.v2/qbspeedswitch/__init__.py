@@ -18,8 +18,9 @@ class QbSpeedSwitch(_PluginBase):
     # 插件描述
     plugin_desc = (
         "只控制 qBittorrent 上传限速：无下载时固定限速（防 PCDN 判定），"
-        "有下载时解除限速让下载跑满；下载中实测上传速度超过阈值时压制上传限速"
-        "（只压不自动恢复，下载完成后自动恢复无下载时的固定限速）。下载限速不受本插件影响。"
+        "有下载时解除限速让下载跑满；按可配置的采集间隔读取实测上传速度，"
+        "连续 N 次超过阈值时压制上传限速（只压不自动恢复，下载完成后自动恢复无下载时的固定限速）。"
+        "下载限速不受本插件影响。"
     )
     # 插件图标
     plugin_icon = "Qbittorrent_A.png"
@@ -51,7 +52,7 @@ class QbSpeedSwitch(_PluginBase):
     _onlyonce: bool = False
     # 选中的下载器名称
     _downloaders: List[str] = []
-    # 检测间隔（秒）
+    # 采集间隔（秒）
     _interval: int = 30
     # 有下载时（downloading）的上传限速
     _downloading_upload_limit: int = 0
@@ -60,6 +61,8 @@ class QbSpeedSwitch(_PluginBase):
     # 上传超速压制
     _threshold_enabled: bool = False
     _upload_threshold: int = 0
+    # 连续多少次采集都超阈值才触发压制
+    _threshold_consecutive: int = 1
     _threshold_upload_limit: int = 500
     # 各下载器运行状态 {下载器名: {scene, throttled, dl, ul, ...}}
     _state: Dict[str, Dict[str, Any]] = {}
@@ -88,6 +91,8 @@ class QbSpeedSwitch(_PluginBase):
 
             self._threshold_enabled = bool(config.get("threshold_enabled"))
             self._upload_threshold = max(self.__to_int(config.get("upload_threshold"), 0), 0)
+            self._threshold_consecutive = max(
+                self.__to_int(config.get("threshold_consecutive"), 1), 1)
             self._threshold_upload_limit = max(
                 self.__to_int(config.get("threshold_upload_limit"), 500), 0)
 
@@ -98,11 +103,12 @@ class QbSpeedSwitch(_PluginBase):
 
         logger.info(
             f"{self.LOG_TAG}配置加载：enabled={self._enabled}, notify={self._notify}, "
-            f"下载器={self._downloaders or '未选择'}, 间隔={self._interval}s, "
+            f"下载器={self._downloaders or '未选择'}, 采集间隔={self._interval}s, "
             f"无下载时上传{self._idle_upload_limit}KB/s, "
             f"有下载时上传{self._downloading_upload_limit}KB/s, "
             f"超速压制={self._threshold_enabled}"
-            f"(阈值{self._upload_threshold}→{self._threshold_upload_limit})KB/s"
+            f"(连续{self._threshold_consecutive}次超过{self._upload_threshold}"
+            f"→压到{self._threshold_upload_limit})KB/s"
         )
 
         # 动态限流参数校验
@@ -262,8 +268,8 @@ class QbSpeedSwitch(_PluginBase):
                                         "component": "VTextField",
                                         "props": {
                                             "model": "interval",
-                                            "label": "检测间隔（秒）",
-                                            "hint": "最小 10 秒，建议 30 秒",
+                                            "label": "采集间隔（秒）",
+                                            "hint": "每隔多少秒采集一次上传速度，最小 10 秒，建议 30 秒",
                                             "persistent-hint": True,
                                         },
                                     }
@@ -370,7 +376,9 @@ class QbSpeedSwitch(_PluginBase):
                                             "type": "warning",
                                             "variant": "tonal",
                                             "text": (
-                                                "③ 上传超速压制 —— 实测上传速度超过阈值时，把上传限速压到指定值。"
+                                                "③ 上传超速压制 —— 按采集间隔读取实测上传速度，"
+                                                "连续 N 次都超过阈值时，把上传限速压到指定值。"
+                                                "把 N 设大可以避免被瞬时毛刺误触发；N = 1 表示一次即触发。"
                                                 "只压不自动恢复：触发后一直保持，直到下载全部完成（切回无下载时的固定限速）才重置；"
                                                 "下次再来下载时重新从「不限速」开始，超了再压。"
                                                 "无下载时上传已被固定限速，通常不会触发这一条。"
@@ -419,6 +427,21 @@ class QbSpeedSwitch(_PluginBase):
                                     {
                                         "component": "VTextField",
                                         "props": {
+                                            "model": "threshold_consecutive",
+                                            "label": "连续采集次数",
+                                            "hint": "连续多少次采集都超阈值才压制；1 = 一次即触发",
+                                            "persistent-hint": True,
+                                        },
+                                    }
+                                ],
+                            },
+                            {
+                                "component": "VCol",
+                                "props": {"cols": 12, "md": 3},
+                                "content": [
+                                    {
+                                        "component": "VTextField",
+                                        "props": {
                                             "model": "threshold_upload_limit",
                                             "label": "压制到（KB/s）",
                                             "hint": "触发后压到的上传速度，例如 500",
@@ -445,7 +468,7 @@ class QbSpeedSwitch(_PluginBase):
                                                 "关于「档位」：本插件通过 set_speed_limit 下发限速，写入的是 qBittorrent "
                                                 "当前生效的档位 —— 备用速度模式关闭时写全局限速，开启时写备用限速。"
                                                 "如果 qB 开了计划限速（自动切换备用速度），切换瞬间生效值会变成另一个槽位的旧值，"
-                                                "插件会在下一轮检测时自动纠正，最长延迟为一个检测间隔。"
+                                                "插件会在下一轮采集时自动纠正，最长延迟为一个采集间隔。"
                                                 "为避免 qB 自带计划限速与本插件互相干扰，建议关闭 qB 的计划限速，由本插件统一接管。"
                                             ),
                                         },
@@ -466,6 +489,7 @@ class QbSpeedSwitch(_PluginBase):
             "downloading_upload_limit": 0,
             "threshold_enabled": False,
             "upload_threshold": 0,
+            "threshold_consecutive": 1,
             "threshold_upload_limit": 500,
         }
 
@@ -495,6 +519,7 @@ class QbSpeedSwitch(_PluginBase):
                         {"component": "td", "text": name},
                         {"component": "td", "text": self.__scene_label(item.get("scene"))},
                         {"component": "td", "text": "是" if item.get("throttled") else "否"},
+                        {"component": "td", "text": self.__fmt_progress(item)},
                         {"component": "td", "text": self.__fmt_limit(item.get("ul"))},
                         {"component": "td", "text": str(item.get("downloading", 0))},
                         {"component": "td", "text": item.get("updated_at") or "-"},
@@ -516,6 +541,7 @@ class QbSpeedSwitch(_PluginBase):
                                     {"component": "th", "text": "下载器"},
                                     {"component": "th", "text": "当前场景"},
                                     {"component": "th", "text": "已压制"},
+                                    {"component": "th", "text": "连续超阈值"},
                                     {"component": "th", "text": "上传限速"},
                                     {"component": "th", "text": "下载中任务"},
                                     {"component": "th", "text": "更新时间"},
@@ -606,19 +632,29 @@ class QbSpeedSwitch(_PluginBase):
             reason = "动态限流已关闭" if not self._threshold_enabled else "压制值不再比档位值严格"
             logger.info(f"{self.LOG_TAG}[{name}] 压制已解除（{reason}）")
 
-        # 未处于压制时，评估是否需要进入压制
+        # 未处于压制时，采集上传速度并评估是否需要进入压制
         if not throttled and self._threshold_enabled and self._upload_threshold > 0:
             up_speed = self.__upload_speed(qb)
-            if up_speed is not None and up_speed > self._upload_threshold:
+
+            # 维护「连续超阈值」计数：低于阈值即清零；读取失败则保持计数不动
+            if up_speed is None:
+                pass
+            elif up_speed > self._upload_threshold:
+                state["over_count"] = state.get("over_count", 0) + 1
+            else:
+                state["over_count"] = 0
+
+            over_count = state.get("over_count", 0)
+            if over_count >= self._threshold_consecutive:
                 if throttle_usable:
                     throttled = True
                     logger.info(
-                        f"{self.LOG_TAG}[{name}] 实测上传 {up_speed:.0f} KB/s 超过阈值 "
+                        f"{self.LOG_TAG}[{name}] 实测上传连续 {over_count} 次超过阈值 "
                         f"{self._upload_threshold} KB/s，压制上传限速至 {self._threshold_upload_limit} KB/s"
                     )
                 elif not state.get("warned"):
                     logger.warning(
-                        f"{self.LOG_TAG}[{name}] 实测上传 {up_speed:.0f} KB/s 超过阈值，"
+                        f"{self.LOG_TAG}[{name}] 实测上传连续 {over_count} 次超过阈值，"
                         f"但压制值 {self._threshold_upload_limit} KB/s 不低于档位值 {scene_ul} KB/s，忽略本次压制"
                     )
                     state["warned"] = True
@@ -771,7 +807,12 @@ class QbSpeedSwitch(_PluginBase):
             f"上传限速：{self.__fmt_limit(upload_limit)}"
         )
         if throttled:
-            text += f"\n\n已压制：实测上传超过 {self._upload_threshold} KB/s，保持压制直到场景切换。"
+            condition = (
+                f"实测上传超过 {self._upload_threshold} KB/s"
+                if self._threshold_consecutive <= 1
+                else f"实测上传连续 {self._threshold_consecutive} 次超过 {self._upload_threshold} KB/s"
+            )
+            text += f"\n\n已压制：{condition}，保持压制直到场景切换。"
 
         self.post_message(mtype=NotificationType.Plugin, title=title, text=text)
 
@@ -816,6 +857,7 @@ class QbSpeedSwitch(_PluginBase):
             "idle_upload_limit": self._idle_upload_limit,
             "threshold_enabled": self._threshold_enabled,
             "upload_threshold": self._upload_threshold,
+            "threshold_consecutive": self._threshold_consecutive,
             "threshold_upload_limit": self._threshold_upload_limit,
         }
 
@@ -834,6 +876,17 @@ class QbSpeedSwitch(_PluginBase):
         except (TypeError, ValueError):
             value = 0
         return "不限速" if value <= 0 else f"{value} KB/s"
+
+    def __fmt_progress(self, item: Dict[str, Any]) -> str:
+        """
+        详情页展示「连续超阈值」进度，如 2/3
+        """
+        try:
+            current = int(item.get("over_count") or 0)
+        except (TypeError, ValueError):
+            current = 0
+        target = max(int(self._threshold_consecutive or 1), 1)
+        return f"{current}/{target}"
 
     @staticmethod
     def __to_int(value: Any, default: int = 0) -> int:
