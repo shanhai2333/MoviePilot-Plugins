@@ -629,30 +629,38 @@ class QbSpeedSwitch(_PluginBase):
             target_dl, target_ul = self._idle_download_limit, self._idle_upload_limit
 
         # 4) 动态限流：只压不自动恢复
-        # 关闭动态限流开关时同步解除压制状态
+        # 4) 动态限流：只压不自动恢复
+        # 档位基准值（未压制时该场景应有的上传限速）
+        scene_ul = target_ul
+        # 压制值必须比档位值更严格，否则「压制」反而等于放宽限速。
+        # 这个判断每轮都要做：用户可能在压制生效期间改配置，导致旧压制值不再合理。
+        throttle_usable = self._threshold_upload_limit > 0 and (
+            scene_ul == 0 or self._threshold_upload_limit < scene_ul
+        )
+
+        # 关闭开关、或压制值不再合理时，同步解除压制状态
         was_throttled = bool(state.get("throttled"))
-        throttled = was_throttled if self._threshold_enabled else False
-        if (
-            not throttled
-            and self._threshold_enabled
-            and self._upload_threshold > 0
-            and self._threshold_upload_limit > 0
-        ):
+        throttled = was_throttled and self._threshold_enabled and throttle_usable
+        if was_throttled and not throttled:
+            reason = "动态限流已关闭" if not self._threshold_enabled else "压制值不再比档位值严格"
+            logger.info(f"{self.LOG_TAG}[{name}] 压制已解除（{reason}）")
+
+        # 未处于压制时，评估是否需要进入压制
+        if not throttled and self._threshold_enabled and self._upload_threshold > 0:
             up_speed = self.__upload_speed(qb)
             if up_speed is not None and up_speed > self._upload_threshold:
-                if target_ul == 0 or self._threshold_upload_limit < target_ul:
+                if throttle_usable:
                     throttled = True
                     logger.info(
                         f"{self.LOG_TAG}[{name}] 实测上传 {up_speed:.0f} KB/s 超过阈值 "
                         f"{self._upload_threshold} KB/s，压制上传限速至 {self._threshold_upload_limit} KB/s"
                     )
-                else:
-                    if not state.get("warned"):
-                        logger.warning(
-                            f"{self.LOG_TAG}[{name}] 实测上传 {up_speed:.0f} KB/s 超过阈值，"
-                            f"但压制值 {self._threshold_upload_limit} KB/s 不低于档位值 {target_ul} KB/s，忽略本次压制"
-                        )
-                        state["warned"] = True
+                elif not state.get("warned"):
+                    logger.warning(
+                        f"{self.LOG_TAG}[{name}] 实测上传 {up_speed:.0f} KB/s 超过阈值，"
+                        f"但压制值 {self._threshold_upload_limit} KB/s 不低于档位值 {scene_ul} KB/s，忽略本次压制"
+                    )
+                    state["warned"] = True
 
         if throttled:
             target_ul = self._threshold_upload_limit
