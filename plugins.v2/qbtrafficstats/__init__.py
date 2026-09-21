@@ -48,7 +48,7 @@ class QbTrafficStats(_PluginBase):
     # 插件图标
     plugin_icon = "Qbittorrent_A.png"
     # 插件版本
-    plugin_version = "1.6"
+    plugin_version = "1.7"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -243,7 +243,7 @@ class QbTrafficStats(_PluginBase):
                             },
                             {
                                 "component": "VCol",
-                                "props": {"cols": 12, "md": 2},
+                                "props": {"cols": 12, "md": 3},
                                 "content": [
                                     {
                                         "component": "VSelect",
@@ -254,15 +254,13 @@ class QbTrafficStats(_PluginBase):
                                             "model": "downloaders",
                                             "label": "下载器",
                                             "items": downloader_items,
-                                            "hint": "选择需要统计的 qBittorrent 下载器",
-                                            "persistent-hint": True,
                                         },
                                     }
                                 ],
                             },
                             {
                                 "component": "VCol",
-                                "props": {"cols": 12, "md": 2},
+                                "props": {"cols": 12, "md": 3},
                                 "content": [
                                     {
                                         "component": "VSwitch",
@@ -451,9 +449,11 @@ class QbTrafficStats(_PluginBase):
         divisor, unit = self.__pick_unit(peak)
 
         categories = [date[5:] for date in dates]
+        # 单位写进曲线名，这样 tooltip 和 legend 里都带单位（ApexCharts 的
+        # formatter 得传 JS 函数，走配置 JSON 传不了）
         series = [
-            {"name": "上传", "data": [round(daily[d]["ul"] / divisor, 2) for d in dates]},
-            {"name": "下载", "data": [round(daily[d]["dl"] / divisor, 2) for d in dates]},
+            {"name": f"上传（{unit}）", "data": [round(daily[d]["ul"] / divisor, 2) for d in dates]},
+            {"name": f"下载（{unit}）", "data": [round(daily[d]["dl"] / divisor, 2) for d in dates]},
         ]
 
         title = title_fmt.format(days=len(dates), unit=unit)
