@@ -2,9 +2,8 @@
 QB 流量统计（MoviePilot v2 插件）。
 
 把 qBittorrent 的上传 / 下载流量按「当前累计、较上次新增、今日新增、本月累计」
-推送到 MoviePilot 的通知渠道。设计上主要给外部 cron 调用 HTTP 接口触发：
-
-    curl "http://<MoviePilot地址>:3001/api/v1/plugin/QbTrafficStats/push"
+推送到 MoviePilot 的通知渠道。在插件配置里填一个 cron 表达式即可，
+由 MoviePilot 自己的调度器定时执行；也可以发远程命令 /qb_traffic_push 手动推一次。
 
 关于计数口径与「不能为负」：
 
@@ -40,13 +39,13 @@ class QbTrafficStats(_PluginBase):
     # 插件描述
     plugin_desc = (
         "定时推送 qBittorrent 的上传/下载流量：当前累计、较上次新增、今日新增、本月累计。"
-        "填一个 cron 表达式即可，另可选提供 HTTP 接口给外部调度器调用；"
+        "填一个 cron 表达式即可，由 MoviePilot 自己的调度器执行；"
         "基于 qB 全时计数统计，qB 重启或计数回退时自动兜底，不会出现负数。"
     )
     # 插件图标
     plugin_icon = "Qbittorrent_A.png"
     # 插件版本
-    plugin_version = "1.1"
+    plugin_version = "1.2"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -63,8 +62,6 @@ class QbTrafficStats(_PluginBase):
     # 数据源标识
     SOURCE_ALLTIME = "alltime"
     SOURCE_SESSION = "session"
-    # 接口路径（MoviePilot 会自动在前面拼 /api/v1/plugin/<类名>）
-    API_PATH = "/push"
     # 日期格式
     TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
@@ -73,10 +70,8 @@ class QbTrafficStats(_PluginBase):
     _enabled: bool = False
     # 选中的下载器名称
     _downloaders: List[str] = []
-    # 定时推送的 cron 表达式（留空则不定时，只响应命令/接口）
+    # 定时推送的 cron 表达式（留空则不定时，只响应远程命令）
     _cron: str = ""
-    # 接口调用令牌（留空则不校验）
-    _api_token: str = ""
     # 各下载器的统计状态 {下载器名: {...}}
     _state: Dict[str, Dict[str, Any]] = {}
     # 并发锁
@@ -95,7 +90,6 @@ class QbTrafficStats(_PluginBase):
             self._enabled = bool(config.get("enabled"))
             self._downloaders = self.__to_list(config.get("downloaders"))
             self._cron = str(config.get("cron") or "").strip()
-            self._api_token = str(config.get("api_token") or "").strip()
 
         # 恢复跨会话的统计基准，避免插件重启后把「上次新增」算错
         saved = self.get_data("state")
@@ -106,7 +100,6 @@ class QbTrafficStats(_PluginBase):
             f"{self.LOG_TAG}配置加载：enabled={self._enabled}, "
             f"下载器={self._downloaders or '未选择'}, "
             f"定时={'未设置' if not self._cron else self._cron}, "
-            f"接口令牌={'已设置' if self._api_token else '未设置'}, "
             f"已记录 {len(self._state)} 个下载器的统计基准"
         )
 
@@ -144,21 +137,9 @@ class QbTrafficStats(_PluginBase):
 
     def get_api(self) -> List[Dict[str, Any]]:
         """
-        注册插件API，供外部 cron 调用
+        本插件不对外提供 HTTP 接口，定时推送由 get_service() 的内置调度完成
         """
-        return [
-            {
-                "path": self.API_PATH,
-                "endpoint": self.api_push,
-                "methods": ["GET"],
-                "summary": "推送QB流量统计",
-                "description": (
-                    "读取已选下载器的上传/下载流量并推送通知，同时返回本次统计的 JSON。"
-                    "给外部调度器（群晖计划任务、青龙等）调用；"
-                    "如果只想定时推送，直接在插件配置里填 cron 表达式即可，不需要用这个接口。"
-                ),
-            }
-        ]
+        return []
 
     def get_service(self) -> List[Dict[str, Any]]:
         """
@@ -196,12 +177,6 @@ class QbTrafficStats(_PluginBase):
             {"title": config.name, "value": config.name}
             for config in DownloaderHelper().get_configs().values()
         ]
-
-        token_hint = (
-            f"只有用外部调度器调接口时才需要填。接口地址：{self.__api_url()}"
-            "，填写后调用需带上 ?token=xxx，留空则不校验。"
-            "插件接口不需要 MoviePilot 登录，建议只在内网使用，或在这里设个令牌。"
-        )
 
         cron_hint = (
             "5 段式，分 时 日 月 周。示例：每小时 0 * * * *；每天 8 点 0 8 * * *；"
@@ -278,26 +253,6 @@ class QbTrafficStats(_PluginBase):
                                 "props": {"cols": 12},
                                 "content": [
                                     {
-                                        "component": "VTextField",
-                                        "props": {
-                                            "model": "api_token",
-                                            "label": "接口令牌（可选）",
-                                            "hint": token_hint,
-                                            "persistent-hint": True,
-                                        },
-                                    }
-                                ],
-                            }
-                        ],
-                    },
-                    {
-                        "component": "VRow",
-                        "content": [
-                            {
-                                "component": "VCol",
-                                "props": {"cols": 12},
-                                "content": [
-                                    {
                                         "component": "VAlert",
                                         "props": {
                                             "type": "info",
@@ -349,7 +304,6 @@ class QbTrafficStats(_PluginBase):
             "enabled": False,
             "cron": "0 * * * *",
             "downloaders": [],
-            "api_token": "",
         }
 
     def get_page(self) -> List[dict]:
@@ -364,7 +318,7 @@ class QbTrafficStats(_PluginBase):
                     "props": {
                         "type": "info",
                         "variant": "tonal",
-                        "text": "暂无统计数据。插件启用后调用一次接口或发送 /qb_traffic_push 命令，这里会显示各下载器的流量。",
+                        "text": "暂无统计数据。插件启用并到点推送一次后，这里会显示各下载器的流量；也可以发远程命令 /qb_traffic_push 立刻推一次。",
                     },
                 }
             ]
@@ -432,20 +386,6 @@ class QbTrafficStats(_PluginBase):
                 )
         elif action == "qb_traffic_reset":
             self.reset_stats()
-
-    def api_push(self, token: str = None) -> Dict[str, Any]:
-        """
-        供外部 cron 调用的推送接口
-
-        :param token: 接口令牌，配置了令牌时必须一致
-        """
-        if self._api_token and token != self._api_token:
-            logger.warning(f"{self.LOG_TAG}接口令牌不正确，已拒绝本次调用")
-            return {"success": False, "message": "接口令牌不正确"}
-        if not self._enabled:
-            return {"success": False, "message": "插件未启用，请先在插件页面启用并保存"}
-
-        return self.push_stats(manual=True)
 
     def push_stats(self, manual: bool = False) -> Dict[str, Any]:
         """
@@ -777,18 +717,6 @@ class QbTrafficStats(_PluginBase):
         except Exception as err:
             logger.debug(f"{QbTrafficStats.LOG_TAG}Cron 表达式「{expression}」解析失败：{err}")
             return None
-
-    @staticmethod
-    def __api_url() -> str:
-        """
-        拼一个可读的调用地址，方便用户直接写进 cron
-        """
-        try:
-            domain = settings.MP_DOMAIN()
-        except Exception:
-            domain = None
-        base = domain or f"http://<MoviePilot地址>:{settings.PORT}"
-        return f"{base}{settings.API_V1_STR}/plugin/QbTrafficStats{QbTrafficStats.API_PATH}"
 
     @staticmethod
     def __source_label(source: Optional[str]) -> str:
