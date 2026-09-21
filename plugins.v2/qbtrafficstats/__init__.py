@@ -3,7 +3,7 @@ QB 流量统计（MoviePilot v2 插件）。
 
 把 qBittorrent 的上传 / 下载流量按「当前累计、较上次新增、今日新增、本月累计」
 推送到 MoviePilot 的通知渠道。在插件配置里填一个 cron 表达式即可，
-由 MoviePilot 自己的调度器定时执行；也可以发远程命令 /qb_traffic_push 手动推一次。
+由 MoviePilot 自己的调度器定时执行。
 
 关于计数口径与「不能为负」：
 
@@ -45,7 +45,7 @@ class QbTrafficStats(_PluginBase):
     # 插件图标
     plugin_icon = "Qbittorrent_A.png"
     # 插件版本
-    plugin_version = "1.3"
+    plugin_version = "1.4"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -202,7 +202,7 @@ class QbTrafficStats(_PluginBase):
                             },
                             {
                                 "component": "VCol",
-                                "props": {"cols": 12, "md": 5},
+                                "props": {"cols": 12, "md": 3},
                                 "content": [
                                     {
                                         "component": "VCronField",
@@ -221,7 +221,7 @@ class QbTrafficStats(_PluginBase):
                         "content": [
                             {
                                 "component": "VCol",
-                                "props": {"cols": 12},
+                                "props": {"cols": 12, "md": 6},
                                 "content": [
                                     {
                                         "component": "VSelect",
@@ -258,7 +258,6 @@ class QbTrafficStats(_PluginBase):
                                                 "每天 8 点 0 8 * * *、每 6 小时 0 */6 * * *；留空则不定时。"
                                                 "「较上次新增」是距上一次推送之间的增量，"
                                                 "周期越长这个数字覆盖的时间跨度越大。"
-                                                "想立刻看一次效果，发远程命令 /qb_traffic_push 即可。"
                                             ),
                                         },
                                     }
@@ -286,7 +285,6 @@ class QbTrafficStats(_PluginBase):
                                                 "不会出现负数。「今日新增」「本月累计」由本插件按增量累加，"
                                                 "跨天、跨月自动重新起算；跨零点的那一轮增量会整段计入新的一天，"
                                                 "所以建议配合每小时级别的 cron 使用，间隔越长这一段的归属越粗。"
-                                                "重置基准可用远程命令 /qb_traffic_reset。"
                                             ),
                                         },
                                     }
@@ -314,7 +312,7 @@ class QbTrafficStats(_PluginBase):
                     "props": {
                         "type": "info",
                         "variant": "tonal",
-                        "text": "暂无统计数据。插件启用并到点推送一次后，这里会显示各下载器的流量；也可以发远程命令 /qb_traffic_push 立刻推一次。",
+                        "text": "暂无统计数据。插件启用并到点推送一次后，这里会显示各下载器的流量。",
                     },
                 }
             ]
