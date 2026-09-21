@@ -30,12 +30,13 @@
   },
   "QbTrafficStats": {
     "name": "QB流量统计",
-    "description": "推送 qBittorrent 上传/下载流量：当前累计、较上次新增、今日新增、本月累计。提供 HTTP 接口供外部 cron 定时调用（接口无需登录，可设置调用令牌）。统计基于 qB 全时计数，跨重启保留；对计数回退、数据源切换、跨天跨月都做了兜底，任何情况下不会出现负数。",
-    "version": "1.0",
+    "description": "定时推送 qBittorrent 上传/下载流量：当前累计、较上次新增、今日新增、本月累计。填一个 cron 表达式即可，由 MoviePilot 自己的调度器执行；另可选提供 HTTP 接口给外部调度器调用。统计基于 qB 全时计数，跨重启保留；对计数回退、数据源切换、跨天跨月都做了兜底，任何情况下不会出现负数。",
+    "version": "1.1",
     "icon": "statistic.png",
     "author": "shanhai2333",
     "level": 1,
     "history": {
+      "v1.1": "新增 cron 表达式配置，由 MoviePilot 自己的调度器定时推送，不再需要外部 crontab；表达式非法时给出明确日志且不注册任务。外部 HTTP 接口保留为可选项（仅给群晖计划任务、青龙这类外部调度器用）。",
       "v1.0": "按需推送 qBittorrent 上传/下载流量：当前累计、较上次新增、今日新增、本月累计；提供 /api/v1/plugin/QbTrafficStats/push 接口供外部 cron 调用，可设置调用令牌；优先使用 qB 全时计数（alltime_dl/ul，跨重启保留），读不到时退化为会话计数；对计数回退、数据源切换、跨天跨月均做了处理，任何情况下不会出现负数；支持多下载器，另提供远程命令 /qb_traffic_push 与 /qb_traffic_reset。"
     }
   }
