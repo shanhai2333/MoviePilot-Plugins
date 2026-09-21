@@ -83,7 +83,9 @@ class QbSpeedSwitch(_PluginBase):
             self._notify = bool(config.get("notify"))
             self._onlyonce = bool(config.get("onlyonce"))
             self._downloaders = self.__to_list(config.get("downloaders"))
-            self._interval = max(self.__to_int(config.get("interval"), 30), 10)
+            # 下限 1 秒：再小等于连续触发。每轮约 3 次 qB API 调用，
+            # 间隔越短反应越快、对 qB 的请求也越频繁，由用户自行权衡。
+            self._interval = max(self.__to_int(config.get("interval"), 30), 1)
 
             self._downloading_upload_limit = max(
                 self.__to_int(config.get("downloading_upload_limit"), 0), 0)
@@ -116,6 +118,14 @@ class QbSpeedSwitch(_PluginBase):
             logger.warning(
                 f"{self.LOG_TAG}动态限流已启用，但「上传速度阈值」或「压制后上传限速」为 0，"
                 f"动态限流不会生效，请补齐配置。"
+            )
+
+        # 采集间隔提示：每轮约 3 次 qB API 调用，间隔过短时提醒一下
+        if self._enabled and self._interval < 5:
+            daily_calls = round(3 * 86400 / self._interval)
+            logger.warning(
+                f"{self.LOG_TAG}采集间隔为 {self._interval} 秒，"
+                f"每个下载器每天约 {daily_calls:,} 次 qB API 调用，如无必要建议适当调大。"
             )
 
         # 立即运行一次
@@ -269,7 +279,8 @@ class QbSpeedSwitch(_PluginBase):
                                         "props": {
                                             "model": "interval",
                                             "label": "采集间隔（秒）",
-                                            "hint": "每隔多少秒采集一次上传速度，最小 10 秒，建议 30 秒",
+                                            "hint": "每隔多少秒采集一次上传速度，最小 1 秒。"
+                                                    "每轮会调用约 3 次 qB API，间隔越短反应越快、请求也越频繁",
                                             "persistent-hint": True,
                                         },
                                     }
@@ -379,6 +390,7 @@ class QbSpeedSwitch(_PluginBase):
                                                 "③ 上传超速压制 —— 按采集间隔读取实测上传速度，"
                                                 "连续 N 次都超过阈值时，把上传限速压到指定值。"
                                                 "把 N 设大可以避免被瞬时毛刺误触发；N = 1 表示一次即触发。"
+                                                "实际触发耗时约为「采集间隔 × N」秒，例如间隔 5 秒、N = 3 时约 15 秒。"
                                                 "只压不自动恢复：触发后一直保持，直到下载全部完成（切回无下载时的固定限速）才重置；"
                                                 "下次再来下载时重新从「不限速」开始，超了再压。"
                                                 "无下载时上传已被固定限速，通常不会触发这一条。"
