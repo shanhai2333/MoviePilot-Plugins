@@ -24,6 +24,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytz
 from apscheduler.triggers.cron import CronTrigger
+from fastapi import Depends
+
 from app.core.config import settings
 from app.core.event import Event, eventmanager
 from app.helper.downloader import DownloaderHelper
@@ -31,6 +33,22 @@ from app.log import logger
 from app.plugins import _PluginBase
 from app.schemas import NotificationType, ServiceInfo
 from app.schemas.types import EventType
+
+# MoviePilot 注册插件接口走的是 router.add_api_route(**api)，不带任何鉴权，
+# 插件接口默认是裸的。这里按 MP 自己的做法补上登录校验。
+# 不同 MP 版本的模块位置有过变动，逐个尝试，实在拿不到就退化为不校验。
+try:
+    from app.db.userauth import get_current_active_user as _get_current_active_user
+except ImportError:  # pragma: no cover - 兼容旧版 MP
+    try:
+        from app.db.user_oper import get_current_active_user as _get_current_active_user
+    except ImportError:  # pragma: no cover
+        _get_current_active_user = None
+
+# 接口级鉴权依赖，拿不到鉴权函数时为空列表（接口仍可用，但没有登录校验）
+API_AUTH_DEPENDENCIES = (
+    [Depends(_get_current_active_user)] if _get_current_active_user else []
+)
 
 
 class QbTrafficStats(_PluginBase):
@@ -45,7 +63,7 @@ class QbTrafficStats(_PluginBase):
     # 插件图标
     plugin_icon = "Qbittorrent_A.png"
     # 插件版本
-    plugin_version = "1.4"
+    plugin_version = "1.5"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -64,6 +82,8 @@ class QbTrafficStats(_PluginBase):
     SOURCE_SESSION = "session"
     # 保留多少天的每日流量（详情页折线图用）
     HISTORY_DAYS = 7
+    # 「立即运行」按钮调用的接口相对路径（最终地址 /api/v1/plugin/QbTrafficStats/run）
+    API_PATH = "/run"
     # 日期格式
     TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
@@ -139,9 +159,37 @@ class QbTrafficStats(_PluginBase):
 
     def get_api(self) -> List[Dict[str, Any]]:
         """
-        本插件不对外提供 HTTP 接口，定时推送由 get_service() 的内置调度完成
+        只提供配置页「立即运行」按钮所需的接口，没有别的对外入口
+
+        按钮的点击事件由前端 PageRender 转成一次 HTTP 请求，所以想要按钮就必须有接口；
+        插件接口默认不带鉴权，这里显式挂上登录校验。
         """
-        return []
+        return [
+            {
+                "path": self.API_PATH,
+                "endpoint": self.api_run,
+                "methods": ["GET"],
+                "summary": "立即推送一次流量统计",
+                "description": "手动触发一次采集与推送，用于验证配置是否生效。",
+                "dependencies": API_AUTH_DEPENDENCIES,
+            }
+        ]
+
+    def api_run(self) -> Dict[str, Any]:
+        """
+        「立即运行」按钮的后端：手动采集并推送一次
+
+        前端点击后只弹进度框、不展示返回内容，所以失败原因额外发一条通知，
+        否则用户点了没反应会不知道哪里没配对。
+        """
+        result = self.push_stats(manual=True)
+        if not result.get("success"):
+            self.post_message(
+                mtype=NotificationType.Plugin,
+                title="【QB流量统计】",
+                text=f"手动推送未执行：{result.get('message')}",
+            )
+        return result
 
     def get_service(self) -> List[Dict[str, Any]]:
         """
@@ -189,7 +237,7 @@ class QbTrafficStats(_PluginBase):
                         "content": [
                             {
                                 "component": "VCol",
-                                "props": {"cols": 12, "md": 3},
+                                "props": {"cols": 12, "md": 2},
                                 "content": [
                                     {
                                         "component": "VSwitch",
@@ -214,14 +262,9 @@ class QbTrafficStats(_PluginBase):
                                     }
                                 ],
                             },
-                        ],
-                    },
-                    {
-                        "component": "VRow",
-                        "content": [
                             {
                                 "component": "VCol",
-                                "props": {"cols": 12, "md": 6},
+                                "props": {"cols": 12, "md": 2},
                                 "content": [
                                     {
                                         "component": "VSelect",
@@ -237,7 +280,33 @@ class QbTrafficStats(_PluginBase):
                                         },
                                     }
                                 ],
-                            }
+                            },
+                            {
+                                "component": "VCol",
+                                "props": {
+                                    "cols": 12,
+                                    "md": 2,
+                                    "class": "d-flex align-center",
+                                },
+                                "content": [
+                                    {
+                                        "component": "VBtn",
+                                        "props": {
+                                            "color": "primary",
+                                            "variant": "tonal",
+                                            "size": "small",
+                                            "prepend-icon": "mdi-play",
+                                        },
+                                        "text": "立即运行",
+                                        "events": {
+                                            "click": {
+                                                "api": f"plugin/{self.__class__.__name__}{self.API_PATH}",
+                                                "method": "get",
+                                            }
+                                        },
+                                    }
+                                ],
+                            },
                         ],
                     },
                     {
@@ -258,6 +327,7 @@ class QbTrafficStats(_PluginBase):
                                                 "每天 8 点 0 8 * * *、每 6 小时 0 */6 * * *；留空则不定时。"
                                                 "「较上次新增」是距上一次推送之间的增量，"
                                                 "周期越长这个数字覆盖的时间跨度越大。"
+                                                "「立即运行」按已保存的配置执行，改完配置先保存再点。"
                                             ),
                                         },
                                     }
