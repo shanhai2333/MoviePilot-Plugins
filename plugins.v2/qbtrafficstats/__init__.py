@@ -48,7 +48,7 @@ class QbTrafficStats(_PluginBase):
     # 插件图标
     plugin_icon = "Qbittorrent_A.png"
     # 插件版本
-    plugin_version = "1.7"
+    plugin_version = "1.8"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -232,6 +232,20 @@ class QbTrafficStats(_PluginBase):
                                 "props": {"cols": 12, "md": 3},
                                 "content": [
                                     {
+                                        "component": "VSwitch",
+                                        "props": {
+                                            "model": "onlyonce",
+                                            "label": "立即运行一次",
+                                            "color": "primary",
+                                        },
+                                    }
+                                ],
+                            },
+                            {
+                                "component": "VCol",
+                                "props": {"cols": 12, "md": 3},
+                                "content": [
+                                    {
                                         "component": "VCronField",
                                         "props": {
                                             "model": "cron",
@@ -254,20 +268,6 @@ class QbTrafficStats(_PluginBase):
                                             "model": "downloaders",
                                             "label": "下载器",
                                             "items": downloader_items,
-                                        },
-                                    }
-                                ],
-                            },
-                            {
-                                "component": "VCol",
-                                "props": {"cols": 12, "md": 3},
-                                "content": [
-                                    {
-                                        "component": "VSwitch",
-                                        "props": {
-                                            "model": "onlyonce",
-                                            "label": "立即运行一次",
-                                            "color": "primary",
                                         },
                                     }
                                 ],
