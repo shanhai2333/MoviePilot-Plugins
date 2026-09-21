@@ -45,7 +45,7 @@ class QbTrafficStats(_PluginBase):
     # 插件图标
     plugin_icon = "Qbittorrent_A.png"
     # 插件版本
-    plugin_version = "1.2"
+    plugin_version = "1.3"
     # 插件作者
     plugin_author = "shanhai2333"
     # 作者主页
@@ -62,6 +62,8 @@ class QbTrafficStats(_PluginBase):
     # 数据源标识
     SOURCE_ALLTIME = "alltime"
     SOURCE_SESSION = "session"
+    # 保留多少天的每日流量（详情页折线图用）
+    HISTORY_DAYS = 7
     # 日期格式
     TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
@@ -178,11 +180,6 @@ class QbTrafficStats(_PluginBase):
             for config in DownloaderHelper().get_configs().values()
         ]
 
-        cron_hint = (
-            "5 段式，分 时 日 月 周。示例：每小时 0 * * * *；每天 8 点 0 8 * * *；"
-            "每 6 小时 0 */6 * * *；每周一 9 点 0 9 * * 1。留空则不定时推送。"
-        )
-
         return [
             {
                 "component": "VForm",
@@ -205,16 +202,14 @@ class QbTrafficStats(_PluginBase):
                             },
                             {
                                 "component": "VCol",
-                                "props": {"cols": 12, "md": 9},
+                                "props": {"cols": 12, "md": 5},
                                 "content": [
                                     {
-                                        "component": "VTextField",
+                                        "component": "VCronField",
                                         "props": {
                                             "model": "cron",
-                                            "label": "定时推送周期（cron 表达式）",
+                                            "label": "定时推送周期",
                                             "placeholder": "0 * * * *",
-                                            "hint": cron_hint,
-                                            "persistent-hint": True,
                                         },
                                     }
                                 ],
@@ -258,10 +253,11 @@ class QbTrafficStats(_PluginBase):
                                             "type": "info",
                                             "variant": "tonal",
                                             "text": (
-                                                "定时推送由 MoviePilot 自己的调度器执行，"
-                                                "填好 cron 表达式保存即可，不需要另配外部 crontab。"
+                                                "定时推送由 MoviePilot 自己的调度器执行，填好 cron 表达式保存即可。"
+                                                "5 段式（分 时 日 月 周），例如每小时 0 * * * *、"
+                                                "每天 8 点 0 8 * * *、每 6 小时 0 */6 * * *；留空则不定时。"
                                                 "「较上次新增」是距上一次推送之间的增量，"
-                                                "所以周期越长，这个数字覆盖的时间跨度越大。"
+                                                "周期越长这个数字覆盖的时间跨度越大。"
                                                 "想立刻看一次效果，发远程命令 /qb_traffic_push 即可。"
                                             ),
                                         },
@@ -308,7 +304,7 @@ class QbTrafficStats(_PluginBase):
 
     def get_page(self) -> List[dict]:
         """
-        插件详情页
+        插件详情页：近 N 天流量折线图 + 各下载器明细
         """
         state = self._state or {}
         if not state:
@@ -340,32 +336,110 @@ class QbTrafficStats(_PluginBase):
                 }
             )
 
-        return [
+        contents = []
+        chart = self.__build_chart(state)
+        if chart:
+            contents.append(chart)
+        contents.append(
             {
-                "component": "VTable",
-                "props": {"hover": True, "density": "comfortable"},
+                "component": "VCol",
+                "props": {"cols": 12},
                 "content": [
                     {
-                        "component": "thead",
+                        "component": "VTable",
+                        "props": {"hover": True, "density": "comfortable"},
                         "content": [
                             {
-                                "component": "tr",
+                                "component": "thead",
                                 "content": [
-                                    {"component": "th", "text": "下载器"},
-                                    {"component": "th", "text": "数据源"},
-                                    {"component": "th", "text": "累计（上/下）"},
-                                    {"component": "th", "text": "上次新增（上/下）"},
-                                    {"component": "th", "text": "今日新增（上/下）"},
-                                    {"component": "th", "text": "本月累计（上/下）"},
-                                    {"component": "th", "text": "上次采集"},
+                                    {
+                                        "component": "tr",
+                                        "content": [
+                                            {"component": "th", "text": "下载器"},
+                                            {"component": "th", "text": "数据源"},
+                                            {"component": "th", "text": "累计（上/下）"},
+                                            {"component": "th", "text": "上次新增（上/下）"},
+                                            {"component": "th", "text": "今日新增（上/下）"},
+                                            {"component": "th", "text": "本月累计（上/下）"},
+                                            {"component": "th", "text": "上次采集"},
+                                        ],
+                                    }
                                 ],
-                            }
+                            },
+                            {"component": "tbody", "content": rows},
                         ],
-                    },
-                    {"component": "tbody", "content": rows},
+                    }
                 ],
             }
+        )
+
+        return [{"component": "VRow", "content": contents}]
+
+    def __build_chart(self, state: Dict[str, Dict[str, Any]]) -> Optional[dict]:
+        """
+        近 HISTORY_DAYS 天的每日流量折线图（多下载器按日期汇总）
+        """
+        daily: Dict[str, Dict[str, int]] = {}
+        for item in state.values():
+            history = item.get("history")
+            if not isinstance(history, list):
+                continue
+            for entry in history:
+                if not isinstance(entry, dict):
+                    continue
+                date = str(entry.get("date") or "").strip()
+                if not date:
+                    continue
+                bucket = daily.setdefault(date, {"dl": 0, "ul": 0})
+                bucket["dl"] += max(self.__to_int(entry.get("dl")), 0)
+                bucket["ul"] += max(self.__to_int(entry.get("ul")), 0)
+
+        if not daily:
+            return None
+
+        dates = sorted(daily)[-self.HISTORY_DAYS:]
+        # 数据量小时用 MB，避免满屏 0.00
+        peak = max(daily[d]["dl"] + daily[d]["ul"] for d in dates)
+        if peak >= 1024 ** 3:
+            divisor, unit = 1024 ** 3, "GB"
+        else:
+            divisor, unit = 1024 ** 2, "MB"
+
+        categories = [date[5:] for date in dates]
+        series = [
+            {"name": "上传", "data": [round(daily[d]["ul"] / divisor, 2) for d in dates]},
+            {"name": "下载", "data": [round(daily[d]["dl"] / divisor, 2) for d in dates]},
         ]
+
+        title = f"近 {len(dates)} 天流量（{unit}）"
+        if dates[-1] == datetime.now(pytz.timezone(settings.TZ)).strftime("%Y-%m-%d"):
+            title += " · 今天仍在累计"
+
+        return {
+            "component": "VCol",
+            "props": {"cols": 12},
+            "content": [
+                {
+                    "component": "VApexChart",
+                    "props": {
+                        "height": 300,
+                        "options": {
+                            "chart": {"type": "line", "zoom": {"enabled": False}},
+                            "title": {"text": title},
+                            "xaxis": {"categories": categories},
+                            "stroke": {"curve": "smooth", "width": 2},
+                            "markers": {"size": 4},
+                            "legend": {"show": True},
+                            "tooltip": {"shared": True},
+                            "dataLabels": {"enabled": False},
+                            "noData": {"text": "暂无数据"},
+                            "yaxis": {"title": {"text": unit}},
+                        },
+                        "series": series,
+                    },
+                }
+            ],
+        }
 
     @eventmanager.register(EventType.PluginAction)
     def handle_plugin_action(self, event: Event):
@@ -528,6 +602,9 @@ class QbTrafficStats(_PluginBase):
             "month_ul": month_ul,
             "delta_dl": delta_dl,
             "delta_ul": delta_ul,
+            # 最近 HISTORY_DAYS 天的每日流量，供详情页画折线图
+            "history": self.__merge_history(
+                state.get("history"), today, today_dl, today_ul),
         }
 
         interval = "" if first_run else self.__fmt_interval(state.get("last_time"), now)
@@ -782,6 +859,35 @@ class QbTrafficStats(_PluginBase):
         days = seconds // 86400
         hours = (seconds % 86400) // 3600
         return f"{days} 天" + (f" {hours} 小时" if hours else "")
+
+    @classmethod
+    def __merge_history(cls, history: Any, today: str,
+                        today_dl: int, today_ul: int) -> List[Dict[str, Any]]:
+        """
+        维护最近 HISTORY_DAYS 天的每日流量
+
+        旧日期原样保留，今天用当天的累计值覆盖，最后按日期排序截断。
+        用当天的累计值而不是增量，避免同一天多次采集时重复累加。
+        """
+        items: Dict[str, Dict[str, Any]] = {}
+        if isinstance(history, list):
+            for item in history:
+                if not isinstance(item, dict):
+                    continue
+                date = str(item.get("date") or "").strip()
+                if not date or date == today:
+                    continue
+                items[date] = {
+                    "date": date,
+                    "dl": max(cls.__to_int(item.get("dl")), 0),
+                    "ul": max(cls.__to_int(item.get("ul")), 0),
+                }
+        items[today] = {
+            "date": today,
+            "dl": max(cls.__to_int(today_dl), 0),
+            "ul": max(cls.__to_int(today_ul), 0),
+        }
+        return sorted(items.values(), key=lambda entry: entry["date"])[-cls.HISTORY_DAYS:]
 
     @staticmethod
     def __to_int(value: Any, default: int = 0) -> int:
