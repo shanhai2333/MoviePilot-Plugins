@@ -11,11 +11,11 @@ class PushPlusMsgs(_PluginBase):
     # 插件名称
     plugin_name = "PushPlus消息推送(群发)"
     # 插件描述
-    plugin_desc = "使用PushPlus发送消息通知，支持群发。"
+    plugin_desc = "使用PushPlus发送消息通知，支持群发；媒体类通知会带上海报图片。"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/shanhai2333/MoviePilot-Plugins/main/icons/Pushplusplugin.png"
     # 插件版本
-    plugin_version = "1.1"
+    plugin_version = "1.2"
     # 插件作者
     plugin_author = "cheng,shanhai2333"
     # 作者主页
@@ -230,6 +230,9 @@ class PushPlusMsgs(_PluginBase):
         title = msg_body.get("title")
         # 文本
         text = msg_body.get("text")
+        # 图片（MP 在媒体类通知里会带上，来源是 TMDB 的海报/背景图，形如
+        # https://{TMDB_IMAGE_DOMAIN}/t/p/w500/xxx.jpg；非媒体通知为空）
+        image = msg_body.get("image")
 
         if not title and not text:
             logger.warn("标题和内容不能同时为空")
@@ -241,24 +244,26 @@ class PushPlusMsgs(_PluginBase):
             return
 
         try:
+            content, template = self.__build_content(text, image)
             sc_url = "http://www.pushplus.plus/send"
+            event_info = {
+                "token": self._token,
+                "title": title,
+                "content": content,
+                "template": template,
+                "channel": "wechat"
+            }
             if self._istopic and self._topicid:
-                event_info = {
-                    "token": self._token,
-                    "title": title,
-                    "topic" : self._topicid,
-                    "content": text,
-                    "template": "txt",
-                    "channel": "wechat"
-                }
-            else:
-                event_info = {
-                    "token": self._token,
-                    "title": title,
-                    "content": text,
-                    "template": "txt",
-                    "channel": "wechat"
-                }
+                event_info["topic"] = self._topicid
+
+            if image:
+                if str(image).startswith("https://"):
+                    logger.info(f"PushPlus消息携带图片：{image}")
+                else:
+                    # 官方明确要求 https，http 的图片大概率不显示
+                    logger.warn(f"PushPlus消息携带的图片不是 https 地址，"
+                                f"公众号可能不显示：{image}")
+
             res = RequestUtils(content_type="application/json").post_res(sc_url, json=event_info)
             if res and res.status_code == 200:
                 ret_json = res.json()
@@ -274,6 +279,27 @@ class PushPlusMsgs(_PluginBase):
                 logger.warn("PushPlus消息发送失败，未获取到返回信息")
         except Exception as msg_e:
             logger.error(f"PushPlus消息发送异常，{str(msg_e)}")
+
+    @staticmethod
+    def __build_content(text: str, image: str = None):
+        """
+        组装 PushPlus 的 content 与 template
+
+        - 没有图片时沿用 txt 模板：原样展示，换行不会被折叠
+        - 有图片时切到 html 模板（txt 是纯文本模板，img 标签不保证渲染），
+          并把换行转成 <br/>，否则 html 下 \\n 会被折叠成空格
+        - 正文做转义，避免文本里的 & < > 把整个 html 撑坏
+        """
+        body = "" if text is None else str(text)
+        if not image:
+            return body, "txt"
+
+        safe = (body.replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                    .replace("\n", "<br/>"))
+        img = f"<img src='{image}' style='max-width:100%'/>"
+        return (f"{safe}<br/>{img}" if safe else img), "html"
 
     def stop_service(self):
         """
