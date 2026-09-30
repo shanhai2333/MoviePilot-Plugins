@@ -8,3 +8,4 @@ MoviePilot三方插件市场：https://github.com/shanhai2333/MoviePilot-Plugins
 3. 路径关键字重命名
 4. QB速度调度
 5. QB流量统计
+6. 自定义媒体扩展名
